@@ -19,11 +19,6 @@ allprojects {
         jcenter()
         maven {
             url "https://jitpack.io"
-            content {
-                // For some reason gradle attempts to get bugsnag from here, which returns 522
-                // after which gradle just drops jitpack. Exclude so it doesn't bother trying.
-                excludeGroupByRegex ".*bugsnag.*"
-            }
         }
     }
 }
