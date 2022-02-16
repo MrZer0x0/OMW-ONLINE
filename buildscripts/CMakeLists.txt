@@ -503,7 +503,7 @@ set(TES3MP_PATCH
 ExternalProject_Add(tes3mp
 	DEPENDS boost openal osg mygui ffmpeg sdl2 bullet lz4 raknet
 
-	URL https://github.com/TES3MP/TES3MP/archive/refs/tags/tes3mp-0.8.0.zip
+	URL https://github.com/MrZer0x0/TES3MP/archive/refs/heads/0.8.0.zip
 	# URL_HASH ${TES3MP_HASH}
 	DOWNLOAD_DIR ${download_dir}
 
