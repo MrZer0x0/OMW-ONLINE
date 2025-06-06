@@ -2,24 +2,23 @@
 
 set -e
 
-source ./include/version.sh
-
-mkdir -p downloads
-
-pushd downloads
-
-if [[ -f $NDK_FILE ]]; then
-	# We've already downloaded it
-	exit 0
+if [ ! -f "downloads/$NDK_FILE" ]; then
+    echo "==> Downloading NDK"
+    mkdir -p downloads
+    cd downloads
+    
+    # Обновленный URL для загрузки NDK
+    wget "https://dl.google.com/android/repository/android-ndk-${NDK_VERSION}-linux.zip" -O "$NDK_FILE"
+    cd ..
 fi
-
-curl --http1.1 "https://dl.google.com/android/repository/android-ndk-${NDK_VERSION}-linux-x86_64.zip" > $NDK_FILE
 
 echo "==> Checking NDK zip file integrity"
-FILE_HASH=$(sha256sum $NDK_FILE | awk '{print $1}' )
-if [[ $FILE_HASH != $NDK_HASH ]]; then
-	echo "Failed, expected $NDK_HASH got $FILE_HASH"
-	exit 1
-fi
+echo "$NDK_HASH downloads/$NDK_FILE" | sha256sum -c
 
-popd
+echo "(Extracting, this will take a while...)"
+rm -rf ./toolchain
+mkdir -p ./toolchain
+cd ./toolchain
+unzip -q "../downloads/$NDK_FILE"
+mv android-ndk-${NDK_VERSION} ndk
+cd ..
