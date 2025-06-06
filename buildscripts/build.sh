@@ -8,100 +8,104 @@ export ARCH="arm"
 export CCACHE="false"
 ASAN="false"
 DEPLOY_RESOURCES="true"
-LTO="true"
+LTO="false"
 BUILD_TYPE="release"
+GH_ACTIONS_BUILD="false"
 CFLAGS="-fPIC"
 CXXFLAGS="-fPIC -frtti -fexceptions"
-LDFLAGS=""
+LDFLAGS="-Wl,--undefined-version"
 
 usage() {
-	echo "Usage: ./build.sh [--help] [--asan] [--arch arch] [--debug|--release]"
-	echo "	--help: print this message"
-	echo "	--arch: build for specified architecture [arm, arm64, x86_64, x86] (default: arm)"
-	echo "	--asan: build with AddressSanitizer enabled"
-	echo "	--no-resources: don't deploy the resources (used in full-build.sh)"
-	echo "	--lto: use LTO for linking"
-	echo "	--ccache: use ccache to speed up repeated builds"
-	echo "	--debug: produce a debug build without optimizations"
-	echo "	--release: produce a release build with optimizations (default)"
-	exit 0
+    echo "Usage: ./build.sh [--help] [--asan] [--arch arch] [--debug|--release]"
+    echo "  --help: print this message"
+    echo "  --arch: build for specified architecture [arm, arm64, x86_64, x86] (default: arm)"
+    echo "  --asan: build with AddressSanitizer enabled"
+    echo "  --no-resources: don't deploy the resources (used in full-build.sh)"
+    echo "  --lto: use LTO for linking"
+    echo "  --ccache: use ccache to speed up repeated builds"
+    echo "  --debug: produce a debug build without optimizations"
+    echo "  --release: produce a release build with optimizations (default)"
+    exit 0
 }
 
 # Parse command-line arguments
 while [[ $# -gt 0 ]]; do
-	key="$1"
+    key="$1"
 
-	case $key in
-		--help)
-			usage
-			shift
-			;;
-		--arch)
-			export ARCH="$2"
-			shift 2
-			;;
-		--asan)
-			ASAN=true
-			shift
-			;;
-		--lto)
-			LTO=true
-			shift
-			;;
-		--ccache)
-			export CCACHE="true"
-			shift
-			;;
-		--debug)
-			BUILD_TYPE="debug"
-			shift
-			;;
-		--release)
-			BUILD_TYPE="release"
-			shift
-			;;
-		--no-resources)
-			DEPLOY_RESOURCES="false"
-			shift
-			;;
-		*)
-			echo "Invalid argument: $key"
-			exit 1
-			;;
-	esac
+    case $key in
+        --help)
+            usage
+            shift
+            ;;
+        --arch)
+            export ARCH="$2"
+            shift 2
+            ;;
+        --asan)
+            ASAN=true
+            shift
+            ;;
+        --lto)
+            LTO=true
+            shift
+            ;;
+        --ccache)
+            export CCACHE="true"
+            shift
+            ;;
+        --debug)
+            BUILD_TYPE="debug"
+            shift
+            ;;
+        --release)
+            BUILD_TYPE="release"
+            shift
+            ;;
+        --no-resources)
+            DEPLOY_RESOURCES="false"
+            shift
+            ;;
+        --gh_actions_build)
+            GH_ACTIONS_BUILD="true"
+            shift
+            ;;
+        *)
+            echo "Invalid argument: $key"
+            exit 1
+            ;;
+    esac
 done
 
 if [[ $ASAN = true && $ARCH != "arm" && $ARCH != "arm64" ]]; then
-	echo "AddressSanitizer is only supported on arm and aarch64 architectures"
-	exit 1
+    echo "AddressSanitizer is only supported on arm and aarch64 architectures"
+    exit 1
 fi
 
 source ./include/version.sh
 
 if [ $ASAN = true ]; then
-	CFLAGS="$CFLAGS -fsanitize=address -fuse-ld=gold -fno-omit-frame-pointer"
-	CXXFLAGS="$CXXFLAGS -fsanitize=address -fuse-ld=gold -fno-omit-frame-pointer"
-	LDFLAGS="$LDFLAGS -fsanitize=address -fuse-ld=gold -fno-omit-frame-pointer"
+    CFLAGS="$CFLAGS -fsanitize=address -fuse-ld=gold -fno-omit-frame-pointer"
+    CXXFLAGS="$CXXFLAGS -fsanitize=address -fuse-ld=gold -fno-omit-frame-pointer"
+    LDFLAGS="$LDFLAGS -fsanitize=address -fuse-ld=gold -fno-omit-frame-pointer"
 fi
 
 if [ $BUILD_TYPE = "release" ]; then
-	CFLAGS="$CFLAGS -O3"
-	CXXFLAGS="$CXXFLAGS -O3"
+    CFLAGS="$CFLAGS -O3"
+    CXXFLAGS="$CXXFLAGS -O3"
 else
-	CFLAGS="$CFLAGS -O0 -g"
-	CXXFLAGS="$CXXFLAGS -O0 -g"
+    CFLAGS="$CFLAGS -O0 -g"
+    CXXFLAGS="$CXXFLAGS -O0 -g"
 fi
 
 if [[ $LTO = "true" ]]; then
-	CFLAGS="$CFLAGS -flto"
-	CXXFLAGS="$CXXFLAGS -flto"
-	# emulated-tls should not be needed in ndk r18 https://github.com/android-ndk/ndk/issues/498#issuecomment-327825754
-	LDFLAGS="$LDFLAGS -flto -Wl,-plugin-opt=-emulated-tls -fuse-ld=gold"
+    CFLAGS="$CFLAGS -flto=thin"
+    CXXFLAGS="$CXXFLAGS -flto=thin"
+    LDFLAGS="$LDFLAGS -flto=thin -Wl,-plugin-opt=-emulated-tls -fuse-ld=lld"
 fi
 
 if [[ $ARCH = "arm" ]]; then
-	CFLAGS="$CFLAGS -mthumb"
-	CXXFLAGS="$CXXFLAGS -mthumb"
+    CFLAGS="$CFLAGS -mthumb"
+    CXXFLAGS="$CXXFLAGS -mthumb"
 fi
 
 echo ""
@@ -126,6 +130,7 @@ echo ""
 echo "==> Download and set up the NDK"
 ./include/download-ndk.sh
 ./include/setup-ndk.sh
+./include/setup-icu.sh
 
 NCPU=$(grep -c ^processor /proc/cpuinfo)
 echo "==> Build using $NCPU CPUs"
@@ -140,13 +145,13 @@ ln -sf lib prefix/$ARCH/osg/lib64
 
 # generate command_wrapper.sh
 cat include/command_wrapper_head.sh.in | \
-	DIR=$DIR \
-	ARCH=$ARCH \
-	ENV_CFLAGS=$CFLAGS \
-	ENV_CXXFLAGS=$CXXFLAGS \
-	NDK_TRIPLET=$NDK_TRIPLET \
-	ENV_LDFLAGS=$LDFLAGS \
-		envsubst > build/$ARCH/command_wrapper.sh
+    DIR=$DIR \
+    ARCH=$ARCH \
+    ENV_CFLAGS=$CFLAGS \
+    ENV_CXXFLAGS=$CXXFLAGS \
+    NDK_TRIPLET=$NDK_TRIPLET \
+    ENV_LDFLAGS=$LDFLAGS \
+        envsubst > build/$ARCH/command_wrapper.sh
 cat include/command_wrapper_tail.sh.in >> build/$ARCH/command_wrapper.sh
 chmod +x build/$ARCH/command_wrapper.sh
 
@@ -157,15 +162,16 @@ source ./command_wrapper.sh true
 
 # Build!
 cmake ../.. \
-	-DCMAKE_INSTALL_PREFIX=$DIR/prefix/$ARCH/ \
-	-DARCH=$ARCH \
-	-DBUILD_TYPE=$BUILD_TYPE \
-	-DNDK_TRIPLET=$NDK_TRIPLET \
-	-DANDROID_API=$ANDROID_API \
-	-DABI=$ABI \
-	-DBOOST_ARCH=$BOOST_ARCH \
-	-DBOOST_ADDRESS_MODEL=$BOOST_ADDRESS_MODEL \
-	-DFFMPEG_CPU=$FFMPEG_CPU
+    -DCMAKE_INSTALL_PREFIX=$DIR/prefix/$ARCH/ \
+    -DARCH=$ARCH \
+    -DBUILD_TYPE=$BUILD_TYPE \
+    -DNDK_TRIPLET=$NDK_TRIPLET \
+    -DANDROID_API=$ANDROID_API \
+    -DABI=$ABI \
+    -DBOOST_ARCH=$BOOST_ARCH \
+    -DBOOST_ADDRESS_MODEL=$BOOST_ADDRESS_MODEL \
+    -DLUAJIT_HOST_CC="$LUAJIT_HOST_CC" \
+    -DFFMPEG_CPU=$FFMPEG_CPU
 make -j$NCPU
 
 popd
@@ -177,40 +183,37 @@ rm -rf ../app/src/main/jniLibs/$ABI/
 mkdir -p ../app/src/main/jniLibs/$ABI/
 
 # libopenmw.so is a special case
-find build/$ARCH/tes3mp-prefix/ -iname "libtes3mp.so" -exec cp "{}" ../app/src/main/jniLibs/$ABI/libtes3mp.so \;
+find build/$ARCH/openmw-prefix/ -iname "libopenmw.so" -exec cp "{}" ../app/src/main/jniLibs/$ABI/libopenmw.so \;
+
+# copy delta_plugin to lib location
+cp tool/libdelta_plugin.so ../app/src/main/jniLibs/$ABI/
 
 # copy over libs we compiled
-cp prefix/$ARCH/lib/{libopenal,libSDL2,libhidapi,libGL}.so ../app/src/main/jniLibs/$ABI/
+cp prefix/$ARCH/lib/{libopenal,libSDL2,libhidapi,libng_gl4es,libspirv-cross-c-shared,libcollada-dom2.5-dp}.so ../app/src/main/jniLibs/$ABI/
 
 # copy over libc++_shared
 find ./toolchain/$ARCH/sysroot/usr/lib/$NDK_TRIPLET -iname "libc++_shared.so" -exec cp "{}" ../app/src/main/jniLibs/$ABI/ \;
 
 if [[ $DEPLOY_RESOURCES = "true" ]]; then
-	echo "==> Deploying resources"
+    echo "==> Deploying resources"
 
-	DST=$DIR/../app/src/main/assets/libopenmw/
-	SRC=build/$ARCH/tes3mp-prefix/src/tes3mp-build/
-	SRCTES3MP=build/$ARCH/tes3mp-prefix/src/tes3mp-build/
+    DST=$DIR/../app/src/main/assets/libopenmw/
+    SRC=build/$ARCH/openmw-prefix/src/openmw-build/
 
-	rm -rf "$DST" && mkdir -p "$DST"
+    rm -rf "$DST" && mkdir -p "$DST"
 
-	# resources
-	cp -r "$SRCTES3MP/resources" "$DST"
-	mv "$DST/resources" "$DST/tes3mp-resources" 
-	cp -r "$SRC/resources" "$DST"
+    # resources
+    cp -r "$SRC/resources" "$DST"
 
-	# global config
-	mkdir -p "$DST/openmw/"
-	cp "$SRC/defaults.bin" "$DST/openmw/"
-	cp "$SRC/gamecontrollerdb.txt" "$DST/openmw/"
-	cp "$SRCTES3MP/tes3mp-client-default.cfg" "$DST/openmw/"
-	# cp "$DIR/../app/version" "$DST/tes3mp-resources/version"
-	# cp "$DIR/../app/settings-default.cfg" "$DST/openmw/"
-	cat "$SRC/openmw.cfg" | grep -v "data=" | grep -v "data-local=" >> "$DST/openmw/openmw.base.cfg"
-	cat "$DIR/../app/openmw.base.cfg" >> "$DST/openmw/openmw.base.cfg"
+    # global config
+    mkdir -p "$DST/openmw/"
+    cp "$SRC/defaults.bin" "$DST/openmw/"
+    cp "$SRC/gamecontrollerdb.txt" "$DST/openmw/"
+    cat "$SRC/openmw.cfg" | grep -v "data=" | grep -v "data-local=" >> "$DST/openmw/openmw.base.cfg"
+    cat "$DIR/../app/openmw.base.cfg" >> "$DST/openmw/openmw.base.cfg"
 
-	# licensing info
-	cp "$DIR/../3rdparty-licenses.txt" "$DST"
+    # licensing info
+    cp "$DIR/../3rdparty-licenses.txt" "$DST"
 fi
 
 echo "==> Making your debugging life easier"
@@ -218,23 +221,26 @@ echo "==> Making your debugging life easier"
 # copy unstripped libs to aid debugging
 rm -rf "./symbols/$ABI/" && mkdir -p "./symbols/$ABI/"
 cp "./build/$ARCH/openal-prefix/src/openal-build/libopenal.so" "./symbols/$ABI/"
-cp "./build/$ARCH/sdl2-prefix/src/sdl2-build/obj/local/$ABI/libSDL2.so" "./symbols/$ABI/"
-cp "./build/$ARCH/sdl2-prefix/src/sdl2-build/obj/local/$ABI/libhidapi.so" "./symbols/$ABI/"
-cp "./build/$ARCH/tes3mp-prefix/src/tes3mp-build/libtes3mp.so" "./symbols/$ABI/libtes3mp.so"
-cp "./build/$ARCH/gl4es-prefix/src/gl4es-build/obj/local/$ABI/libGL.so" "./symbols/$ABI/"
+cp "./build/$ARCH/sdl2-prefix/src/sdl2-build/libSDL2.so" "./symbols/$ABI/"
+cp "./build/$ARCH/sdl2-prefix/src/sdl2-build/libhidapi.so" "./symbols/$ABI/"
+cp "./build/$ARCH/openmw-prefix/src/openmw-build/libopenmw.so" "./symbols/$ABI/libopenmw.so"
 cp "../app/src/main/jniLibs/$ABI/libc++_shared.so" "./symbols/$ABI/"
 
 if [ $ASAN = true ]; then
-	cp ./toolchain/$ARCH/lib64/clang/*/lib/linux/libclang_rt.asan-$ASAN_ARCH-android.so "./symbols/$ABI/"
-	cp ./toolchain/$ARCH/lib64/clang/*/lib/linux/libclang_rt.asan-$ASAN_ARCH-android.so "../app/src/main/jniLibs/$ABI/"
-	mkdir -p ../app/wrap/res/lib/$ABI/
-	sed "s/@ASAN_ARCH@/$ASAN_ARCH/g" < include/asan-wrapper.sh > "../app/wrap/res/lib/$ABI/wrap.sh"
-	chmod +x "../app/wrap/res/lib/$ABI/wrap.sh"
+    cp ./toolchain/$ARCH/lib64/clang/*/lib/linux/libclang_rt.asan-$ASAN_ARCH-android.so "./symbols/$ABI/"
+    cp ./toolchain/$ARCH/lib64/clang/*/lib/linux/libclang_rt.asan-$ASAN_ARCH-android.so "../app/src/main/jniLibs/$ABI/"
+    mkdir -p ../app/wrap/res/lib/$ABI/
+    sed "s/@ASAN_ARCH@/$ASAN_ARCH/g" < include/asan-wrapper.sh > "../app/wrap/res/lib/$ABI/wrap.sh"
+    chmod +x "../app/wrap/res/lib/$ABI/wrap.sh"
 fi
 
-PATH="$DIR/toolchain/ndk/prebuilt/linux-x86_64/bin/:$DIR/toolchain/$ARCH/$NDK_TRIPLET/bin/:$PATH" ./include/gdb-add-index ./symbols/$ABI/*.so
+# Strip libraries for release
+llvm-strip ../app/src/main/jniLibs/$ABI/*.so
 
-# gradle should do it, but just in case...
-$NDK_TRIPLET-strip ../app/src/main/jniLibs/$ABI/*.so
+if [ $GH_ACTIONS_BUILD = true ]; then
+    rm -r ./build
+    rm -r ./downloads
+    rm -r ./toolchain
+fi
 
 echo "==> Success"
