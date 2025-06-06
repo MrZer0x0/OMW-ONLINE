@@ -4,7 +4,10 @@ set -e
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd $DIR
 
-export ARCH="arm"
+# Set execute permissions for all scripts
+chmod +x ./include/*.sh
+
+export ARCH="arm64"
 export CCACHE="false"
 ASAN="false"
 DEPLOY_RESOURCES="true"
@@ -18,7 +21,7 @@ LDFLAGS="-Wl,--undefined-version"
 usage() {
     echo "Usage: ./build.sh [--help] [--asan] [--arch arch] [--debug|--release]"
     echo "  --help: print this message"
-    echo "  --arch: build for specified architecture [arm, arm64, x86_64, x86] (default: arm)"
+    echo "  --arch: build for specified architecture [arm, arm64, x86_64, x86] (default: arm64)"
     echo "  --asan: build with AddressSanitizer enabled"
     echo "  --no-resources: don't deploy the resources (used in full-build.sh)"
     echo "  --lto: use LTO for linking"
@@ -126,6 +129,12 @@ echo ""
 echo "================================================================================"
 echo "(Please run ./clean.sh manually if you modify any of the options)"
 echo ""
+
+# Check for required scripts
+if [ ! -f "./include/download-ndk.sh" ] || [ ! -f "./include/setup-ndk.sh" ] || [ ! -f "./include/setup-icu.sh" ]; then
+    echo "Error: Required script files are missing"
+    exit 1
+fi
 
 echo "==> Download and set up the NDK"
 ./include/download-ndk.sh
