@@ -41,3 +41,4 @@ elif [[ $ARCH = "x86" ]]; then
 else
     echo "Unknown architecture: $ARCH"
     exit 1
+fi
