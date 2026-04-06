@@ -180,7 +180,10 @@ mkdir -p ../app/src/main/jniLibs/$ABI/
 find build/$ARCH/tes3mp-prefix/ -iname "libtes3mp.so" -exec cp "{}" ../app/src/main/jniLibs/$ABI/libtes3mp.so \;
 
 # copy over libs we compiled
-cp prefix/$ARCH/lib/{libopenal,libSDL2,libhidapi,libGL}.so ../app/src/main/jniLibs/$ABI/
+cp prefix/$ARCH/lib/{libopenal,libSDL2,libGL}.so ../app/src/main/jniLibs/$ABI/
+if [ -f "prefix/$ARCH/lib/libhidapi.so" ]; then
+	cp prefix/$ARCH/lib/libhidapi.so ../app/src/main/jniLibs/$ABI/
+fi
 
 # copy over libc++_shared
 find ./toolchain/$ARCH/sysroot/usr/lib/$NDK_TRIPLET -iname "libc++_shared.so" -exec cp "{}" ../app/src/main/jniLibs/$ABI/ \;
@@ -219,7 +222,9 @@ echo "==> Making your debugging life easier"
 rm -rf "./symbols/$ABI/" && mkdir -p "./symbols/$ABI/"
 cp "./build/$ARCH/openal-prefix/src/openal-build/libopenal.so" "./symbols/$ABI/"
 cp "./build/$ARCH/sdl2-prefix/src/sdl2-build/obj/local/$ABI/libSDL2.so" "./symbols/$ABI/"
-cp "./build/$ARCH/sdl2-prefix/src/sdl2-build/obj/local/$ABI/libhidapi.so" "./symbols/$ABI/"
+if [ -f "./build/$ARCH/sdl2-prefix/src/sdl2-build/obj/local/$ABI/libhidapi.so" ]; then
+	cp "./build/$ARCH/sdl2-prefix/src/sdl2-build/obj/local/$ABI/libhidapi.so" "./symbols/$ABI/"
+fi
 cp "./build/$ARCH/tes3mp-prefix/src/tes3mp-build/libtes3mp.so" "./symbols/$ABI/libtes3mp.so"
 cp "./build/$ARCH/gl4es-prefix/src/gl4es-build/obj/local/$ABI/libGL.so" "./symbols/$ABI/"
 cp "../app/src/main/jniLibs/$ABI/libc++_shared.so" "./symbols/$ABI/"

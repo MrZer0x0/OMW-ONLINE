@@ -6,22 +6,22 @@ cmake_policy(SET CMP0074 NEW)
 
 # Определение версий и хешей зависимостей
 set(LIBJPEG_TURBO_VERSION "3.0.0")
-set(LIBJPEG_TURBO_HASH SHA256=c77c47200a636509c8d16c6f4f7c1a7ad41c774d553c8927a20a09651b8a2c5c)
+set(LIBJPEG_TURBO_HASH SHA256=c77c65fcce3d33417b2e90432e7a0eb05f59a7fff884022a9d931775d583bfaa)
 
 set(LIBPNG_VERSION "1.6.40")
 set(LIBPNG_HASH SHA256=8f720b363aa08683c9bf2a563236f45313af2c55d542b5481ae17dd8d183bb42)
 
 set(FREETYPE2_VERSION "2.13.2")
-set(FREETYPE2_HASH SHA256=12991c4e55c506dd7f9b765933e62fd2be2e06d421505d7950a132e4f1bb484d)
+set(FREETYPE2_HASH SHA256=1ac27e16c134a7f2ccea177faba19801131116fd682efc1f5737037c5db224b5)
 
 set(OPENAL_VERSION "1.23.1")
-set(OPENAL_HASH SHA256=dfddf3a1f61059853c625b7bb03de8433b455f2f79f89548cbcbd5edca3d4a4a)
+set(OPENAL_HASH SHA256=796f4b89134c4e57270b7f0d755f0fa3435b90da437b745160a49bd41c845b21)
 
 set(BOOST_VERSION "1.83.0")
 set(BOOST_HASH SHA256=6478edfe2f3305127cffe8caf73ea0176c53769f4bf1585be237eb30798c3b8e)
 
 set(FFMPEG_VERSION "6.1")
-set(FFMPEG_HASH SHA256=488c76e57dd9b3bee4a608a3fd27863d2a961598a4bb8f59e85a1a63b8e8e36f)
+set(FFMPEG_HASH SHA256=488c76e57dd9b3bee901f71d5c95eaf1db4a5a31fe46a28654e837144207c270)
 
 set(SDL2_VERSION "2.28.5")
 set(SDL2_HASH SHA256=332cb37d0be20cb9541739c61f79bae5a477427d79ae85e352089afdaf6666e4)
@@ -155,7 +155,7 @@ ExternalProject_Add(libpng
 
 # freetype2
 ExternalProject_Add(freetype2
-    URL https://download.savannah.gnu.org/releases/freetype/freetype-${FREETYPE2_VERSION}.tar.gz
+    URL https://download.savannah.gnu.org/releases/freetype/freetype-${FREETYPE2_VERSION}.tar.xz
     URL_HASH ${FREETYPE2_HASH}
     DOWNLOAD_DIR ${download_dir}
 
@@ -172,7 +172,7 @@ ExternalProject_Add(freetype2
 
 # OpenAL
 ExternalProject_Add(openal
-    URL https://github.com/kcat/openal-soft/archive/openal-soft-${OPENAL_VERSION}.tar.gz
+    URL https://openal-soft.org/openal-releases/openal-soft-${OPENAL_VERSION}.tar.bz2
     URL_HASH ${OPENAL_HASH}
     DOWNLOAD_DIR ${download_dir}
 
@@ -190,8 +190,37 @@ ExternalProject_Add(openal
 
 # Boost
 string(REPLACE "." "_" BOOST_VERSION_UNDERSCORE ${BOOST_VERSION})
+set(BOOST_USER_CONFIG ${CMAKE_BINARY_DIR}/boost.user-config.jam)
+file(GENERATE OUTPUT ${BOOST_USER_CONFIG} CONTENT "using clang-linux : : \"$ENV{CXX}\" ;\n")
+
+set(BOOST_B2_ARGS
+    --ignore-site-config
+    --user-config=${BOOST_USER_CONFIG}
+    --with-filesystem
+    --with-program_options
+    --with-system
+    --with-iostreams
+    toolset=clang-linux
+    target-os=android
+    architecture=${BOOST_ARCH}
+    address-model=${BOOST_ADDRESS_MODEL}
+    binary-format=elf
+    threadapi=pthread
+    link=static
+    threading=multi
+    runtime-link=shared
+    cflags=$ENV{CFLAGS}
+    cxxflags=$ENV{CXXFLAGS}
+    linkflags=$ENV{LDFLAGS}
+    install
+)
+
+if(BOOST_ARCH STREQUAL "arm")
+    list(APPEND BOOST_B2_ARGS abi=aapcs)
+endif()
+
 ExternalProject_Add(boost
-    URL https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_UNDERSCORE}.tar.bz2
+    URL https://archives.boost.io/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_UNDERSCORE}.tar.bz2
     URL_HASH ${BOOST_HASH}
     DOWNLOAD_DIR ${download_dir}
 
@@ -202,17 +231,7 @@ ExternalProject_Add(boost
 
     BUILD_COMMAND ${wrapper_command} ./b2
     -j8
-    --with-filesystem
-    --with-program_options
-    --with-system
-    --with-iostreams
-    toolset=clang-android
-    architecture=${BOOST_ARCH}
-    address-model=${BOOST_ADDRESS_MODEL}
-    link=static
-    threading=multi
-    runtime-link=shared
-    install
+    ${BOOST_B2_ARGS}
 
     INSTALL_COMMAND ""
 )
@@ -266,7 +285,6 @@ ExternalProject_Add(sdl2
 
     INSTALL_COMMAND mkdir -p ${prefix}/lib/
     COMMAND cp libs/${app_abi}/libSDL2.so ${prefix}/lib/
-    COMMAND cp libs/${app_abi}/libhidapi.so ${prefix}/lib/
     COMMAND cp -r <SOURCE_DIR>/include ${prefix}/
 )
 
