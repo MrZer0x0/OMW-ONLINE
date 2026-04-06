@@ -37,7 +37,7 @@ set(LIBJPEG_TURBO_HASH SHA256=c77c65fcce3d33417b2e90432e7a0eb05f59a7fff884022a9d
 # [VERIFY HASH] sha256 для 1.6.53 нужно получить с:
 # https://sourceforge.net/projects/libpng/files/libpng16/1.6.53/
 set(LIBPNG_VERSION "1.6.40")  # TODO: обновить до 1.6.53
-set(LIBPNG_HASH SHA256=8f720b363aa08683c9bf2a563236f45313af2c55d542b5481ae17dd8d183bb42)
+set(LIBPNG_HASH SHA256=535b479b2467ff231a3ec6d92a525906fb8ef27978be4f66dbe05d3f3a01b3a1)
 
 # freetype2 — ИСПРАВЛЕНО: обновлено до 2.13.3
 # [CONFIRMED] хеш взят из официального анонса:
@@ -370,6 +370,7 @@ ExternalProject_Add(mygui
         -DMYGUI_BUILD_DEMOS=OFF
         -DMYGUI_BUILD_TOOLS=OFF
         -DMYGUI_BUILD_PLUGINS=OFF
+        -DMYGUI_STATIC=ON
         -DFREETYPE_FT2BUILD_INCLUDE_DIR=${prefix}/include/freetype2/
 
     BUILD_COMMAND ${wrapper_command} $(MAKE)
