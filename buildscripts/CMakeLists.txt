@@ -87,6 +87,9 @@ set(LZ4_HASH SHA256=0b0e3aa07c8c063ddf40b082bdf7e37a1562bda40a0ff5272957f3e987e0
 set(TES3MP_VERSION "0.8.1")
 set(TES3MP_HASH SHA256=5f809dfb47586c8d7e6efe12eb2c32b5fc69dfa68f1d13962dda950168727d75)
 
+# OpenSceneGraph — форк openmw/osg, специально адаптированный для OpenMW/TES3MP
+set(OSG_VERSION "673f30ad3820faf2a5e901ffe403b5246b8918fe")
+
 project(openmw-android 
     VERSION 0.48.0
     DESCRIPTION "OpenMW Android Port"
@@ -421,8 +424,67 @@ ExternalProject_Add(gl4es
     COMMAND cp -r <SOURCE_DIR>/include ${prefix}/
 )
 
+# OpenSceneGraph (openmw/osg fork)
+ExternalProject_Add(osg
+    DEPENDS libjpeg-turbo libpng freetype2 gl4es
+
+    URL https://github.com/openmw/osg/archive/${OSG_VERSION}.tar.gz
+    DOWNLOAD_DIR ${download_dir}
+
+    PATCH_COMMAND sh -c "patch -p1 -d <SOURCE_DIR> -t -N < ${CMAKE_SOURCE_DIR}/patches/osg/disable-polygon-offset.patch || true"
+        COMMAND sh -c "patch -p1 -d <SOURCE_DIR> -t -N < ${CMAKE_SOURCE_DIR}/patches/osg/remove-lib-prefix-from-plugins.patch || true"
+        COMMAND sh -c "patch -p1 -d <SOURCE_DIR> -t -N < ${CMAKE_SOURCE_DIR}/patches/osg/fix-freetype-include-dirs.patch || true"
+        COMMAND sh -c "patch -p1 -d <SOURCE_DIR> -t -N < ${CMAKE_SOURCE_DIR}/patches/osg/0001-Replace-Atomic-impl-with-std-atomic.patch || true"
+        COMMAND sh -c "patch -p1 -d <SOURCE_DIR> -t -N < ${CMAKE_SOURCE_DIR}/patches/osg/0002-BufferObject-make-numClients-atomic.patch || true"
+        COMMAND sh -c "patch -p1 -d <SOURCE_DIR> -t -N < ${CMAKE_SOURCE_DIR}/patches/osg/0004-IncrementalCompileOperation-wrap-some-stuff-in-atomi.patch || true"
+        COMMAND sh -c "patch -p1 -d <SOURCE_DIR> -t -N < ${CMAKE_SOURCE_DIR}/patches/osg/0005-CullSettings-make-inheritanceMask-atomic-to-silence-.patch || true"
+        COMMAND sh -c "patch -p1 -d <SOURCE_DIR> -t -N < ${CMAKE_SOURCE_DIR}/patches/osg/remove-zlib-dependency.patch || true"
+
+    CMAKE_ARGS
+        ${COMMON_CMAKE_ARGS}
+        -DOPENGL_PROFILE=GL2
+        -DDYNAMIC_OPENTHREADS=OFF
+        -DDYNAMIC_OPENSCENEGRAPH=OFF
+        -DBUILD_OSG_PLUGIN_OSG=ON
+        -DBUILD_OSG_PLUGIN_DDS=ON
+        -DBUILD_OSG_PLUGIN_TGA=ON
+        -DBUILD_OSG_PLUGIN_BMP=ON
+        -DBUILD_OSG_PLUGIN_JPEG=ON
+        -DBUILD_OSG_PLUGIN_PNG=ON
+        -DBUILD_OSG_PLUGIN_FREETYPE=ON
+        -DBUILD_OSG_PLUGIN_DAE=OFF
+        -DJPEG_INCLUDE_DIR=${prefix}/include/
+        -DPNG_INCLUDE_DIR=${prefix}/include/
+        -DFREETYPE_DIR=${prefix}
+        -DOSG_CPP_EXCEPTIONS_AVAILABLE=TRUE
+        -DOSG_GL1_AVAILABLE=ON
+        -DOSG_GL2_AVAILABLE=ON
+        -DOSG_GL3_AVAILABLE=OFF
+        -DOSG_GLES1_AVAILABLE=OFF
+        -DOSG_GLES3_AVAILABLE=OFF
+        -DOSG_GL_LIBRARY_STATIC=OFF
+        -DOSG_GL_DISPLAYLISTS_AVAILABLE=ON
+        -DOSG_GL_MATRICES_AVAILABLE=ON
+        -DOSG_GL_VERTEX_FUNCS_AVAILABLE=ON
+        -DOSG_GL_VERTEX_ARRAY_FUNCS_AVAILABLE=ON
+        -DOSG_GL_FIXED_FUNCTION_AVAILABLE=ON
+        -DBUILD_OSG_APPLICATIONS=OFF
+        -DBUILD_OSG_PLUGINS_BY_DEFAULT=OFF
+        -DOPENGL_gl_LIBRARY=${prefix}/lib/libGL.so
+        -DCMAKE_CXX_FLAGS=-std=gnu++11\ -I${prefix}/include/\ $ENV{CXXFLAGS}
+
+    BUILD_COMMAND ${wrapper_command} $(MAKE)
+
+    INSTALL_COMMAND mkdir -p <SOURCE_DIR>/3rdparty/build/libpng <SOURCE_DIR>/3rdparty/build/libjpeg <SOURCE_DIR>/3rdparty/build/freetype
+        COMMAND ${wrapper_command} $(MAKE) install
+)
+
 # OpenMW/TES3MP
 set(OPENMW_COMMON_ARGS
+    -DOPENGL_gl_LIBRARY=${prefix}/lib/libGL.so
+    -DOPENGL_glx_LIBRARY=${prefix}/lib/libGL.so
+    -DOPENGL_INCLUDE_DIR=${prefix}/include/
+    -DOSG_STATIC=TRUE
     -DBUILD_BROWSER=OFF
     -DBUILD_BSATOOL=OFF
     -DBUILD_NIFTEST=OFF
@@ -440,7 +502,7 @@ set(OPENMW_COMMON_ARGS
 )
 
 ExternalProject_Add(tes3mp
-    DEPENDS boost openal mygui ffmpeg sdl2 bullet lz4 gl4es
+    DEPENDS boost openal mygui ffmpeg sdl2 bullet lz4 gl4es osg
 
     GIT_REPOSITORY https://github.com/MrZer0x0/TES3MP.git
     GIT_TAG Main
@@ -461,6 +523,7 @@ ExternalProject_Add(tes3mp
         COMMAND sh -c "patch -p1 --fuzz=3 -d <SOURCE_DIR> -i ${CMAKE_SOURCE_DIR}/patches/openmw/04-settingswindow-save-user-settings-file-when-ok-is-pr.patch || true"
         COMMAND sh -c "patch -p1 --fuzz=3 -d <SOURCE_DIR> -i ${CMAKE_SOURCE_DIR}/patches/openmw/05-components-misc-stringops-use-boost-format-instead-o.patch || true"
         COMMAND patch -p1 --fuzz=3 -d <SOURCE_DIR> -i ${CMAKE_SOURCE_DIR}/patches/openmw/06-fix-build.patch
+        COMMAND sh -c "patch -p1 --fuzz=3 -d <SOURCE_DIR> -i ${CMAKE_SOURCE_DIR}/patches/openmw/08-highp.patch || true"
 
     CMAKE_ARGS
         ${COMMON_CMAKE_ARGS}
