@@ -79,8 +79,7 @@ set(BULLET_HASH SHA256=c45afb6399e3f68036ddb641c6bf6f552bf332d5ab6be62f7e6c54eda
 set(MYGUI_VERSION "3.4.1")
 set(MYGUI_HASH SHA256=bdf730bdeb4ad89e6b8223967db01aa5274d2b93adc2c0d6aa4842faeed4de1a)
 
-set(GL4ES_VERSION "1.1.4")
-set(GL4ES_HASH SHA256=b565e717c7d192e936bda25f3cb90ad8db398af56414ec08294b6716574c1a6d)
+# GL4ES_VERSION/HASH удалены — используется GIT_REPOSITORY
 
 set(LZ4_VERSION "1.9.4")
 set(LZ4_HASH SHA256=0b0e3aa07c8c063ddf40b082bdf7e37a1562bda40a0ff5272957f3e987e0e54b)
@@ -394,13 +393,16 @@ ExternalProject_Add(lz4
 )
 
 # GL4ES
+# Переключено с URL на GIT: тег 1.1.4 был удалён из репозитория, архив возвращает 404.
+# Используем master с фиксацией на последний стабильный коммит.
 ExternalProject_Add(gl4es
-    URL https://github.com/ptitSeb/gl4es/archive/${GL4ES_VERSION}.tar.gz
-    URL_HASH ${GL4ES_HASH}
-    DOWNLOAD_DIR ${download_dir}
+    GIT_REPOSITORY https://github.com/ptitSeb/gl4es.git
+    GIT_TAG master
+    GIT_SHALLOW TRUE
+    UPDATE_DISCONNECTED TRUE
 
     CONFIGURE_COMMAND ""
-    
+
     BUILD_COMMAND ${wrapper_command} ndk-build
     ${COMMON_NDK_BUILD_FLAGS}
 
