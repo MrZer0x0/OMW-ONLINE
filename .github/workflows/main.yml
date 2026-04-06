@@ -1,62 +1,123 @@
-name: CI
+name: Android CI
 
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: android-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   build:
+    name: build-${{ matrix.arch }}
+    runs-on: ubuntu-22.04
     strategy:
+      fail-fast: false
       matrix:
-        arch: [arm, arm64]
-
-    runs-on: ubuntu-20.04
+        arch: [arm64]
 
     env:
       CMAKE_VERSION: 3.18.4
+      GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.jvmargs='-Xmx6g -Dfile.encoding=UTF-8'
 
     steps:
-    - uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get install -y build-essential gcc-multilib python unzip pkg-config p7zip-full
-        cd /home/runner/
-        wget https://github.com/Kitware/CMake/releases/download/v$CMAKE_VERSION/cmake-$CMAKE_VERSION-Linux-x86_64.tar.gz
-        tar xvf cmake-$CMAKE_VERSION-Linux-x86_64.tar.gz
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '11'
 
-    - name: Build native libraries
-      run: |
-        export PATH=/home/runner/cmake-$CMAKE_VERSION-Linux-x86_64/bin/:$PATH
-        cd buildscripts
-        ./build.sh --arch ${{ matrix.arch }}
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle', '**/*.gradle.kts', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
 
-    - name: Build the APK
-      run: |
-        ARCH=${{ matrix.arch }} source buildscripts/include/version.sh
-        sed -i "s/abiFilters.*/abiFilters '$ABI'/" app/build.gradle
-        export ANDROID_NDK_HOME=$(pwd)/buildscripts/toolchain/ndk/
-        ./gradlew assembleNightlyDebug
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            gcc-multilib \
+            python3 \
+            unzip \
+            pkg-config \
+            p7zip-full \
+            curl
 
-    - name: Compress symbols
-      run: |
-        cd buildscripts
-        ./package-symbols.sh
-        mv symbols.7z ../symbols-$(git rev-parse --short "$GITHUB_SHA")-${{ matrix.arch }}.7z
+      - name: Install CMake ${{ env.CMAKE_VERSION }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cd "$RUNNER_TEMP"
+          curl -L --retry 5 --retry-delay 3 \
+            -o cmake.tar.gz \
+            "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz"
+          tar -xzf cmake.tar.gz
+          echo "$RUNNER_TEMP/cmake-${CMAKE_VERSION}-linux-x86_64/bin" >> "$GITHUB_PATH"
+          cmake --version
 
-    - name: Collect outputs
-      id: getfilename
-      run: |
-        mv app/build/outputs/apk/nightly/debug/omw_debug_*.apk omw-debug-$(git rev-parse --short "$GITHUB_SHA")-${{ matrix.arch }}.apk
-        echo "::set-output name=apk_file::$(ls omw-debug-*.apk | sed 's/\(.*\)\..*/\1/')"
-        echo "::set-output name=symbols_file::$(ls symbols-*.7z | sed 's/\(.*\)\..*/\1/')"
+      - name: Build native libraries
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cd buildscripts
+          chmod +x ./*.sh ./include/*.sh || true
+          ./build.sh --arch "${{ matrix.arch }}"
 
-    - name: Upload the APK
-      uses: actions/upload-artifact@v1
-      with:
-        name: ${{ steps.getfilename.outputs.apk_file }}
-        path: ${{ steps.getfilename.outputs.apk_file }}.apk
+      - name: Build APK
+        shell: bash
+        run: |
+          set -euxo pipefail
+          export ARCH="${{ matrix.arch }}"
+          source buildscripts/include/version.sh
+          sed -i "s/abiFilters.*/abiFilters '$ABI'/" app/build.gradle
+          export ANDROID_NDK_HOME="$GITHUB_WORKSPACE/buildscripts/toolchain/ndk"
+          ./gradlew --no-daemon assembleNightlyDebug
 
-    - name: Upload debug symbols
-      uses: actions/upload-artifact@v1
-      with:
-        name: ${{ steps.getfilename.outputs.symbols_file }}
-        path: ${{ steps.getfilename.outputs.symbols_file }}.7z
+      - name: Compress symbols
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cd buildscripts
+          ./package-symbols.sh
+          mv symbols.7z "../symbols-$(git rev-parse --short "$GITHUB_SHA")-${{ matrix.arch }}.7z"
+
+      - name: Collect outputs
+        id: outputs
+        shell: bash
+        run: |
+          set -euxo pipefail
+          APK_FILE="omw-debug-$(git rev-parse --short "$GITHUB_SHA")-${{ matrix.arch }}.apk"
+          SYMBOLS_FILE="symbols-$(git rev-parse --short "$GITHUB_SHA")-${{ matrix.arch }}.7z"
+          mv app/build/outputs/apk/nightly/debug/omw_debug_*.apk "$APK_FILE"
+          echo "apk_file=$APK_FILE" >> "$GITHUB_OUTPUT"
+          echo "symbols_file=$SYMBOLS_FILE" >> "$GITHUB_OUTPUT"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.outputs.outputs.apk_file }}
+          path: ${{ steps.outputs.outputs.apk_file }}
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Upload debug symbols
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.outputs.outputs.symbols_file }}
+          path: ${{ steps.outputs.outputs.symbols_file }}
+          retention-days: 14
+          if-no-files-found: error
