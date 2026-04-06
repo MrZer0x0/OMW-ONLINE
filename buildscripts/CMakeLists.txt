@@ -461,7 +461,6 @@ ExternalProject_Add(tes3mp
         COMMAND sh -c "patch -p1 --fuzz=3 -d <SOURCE_DIR> -i ${CMAKE_SOURCE_DIR}/patches/openmw/04-settingswindow-save-user-settings-file-when-ok-is-pr.patch || true"
         COMMAND sh -c "patch -p1 --fuzz=3 -d <SOURCE_DIR> -i ${CMAKE_SOURCE_DIR}/patches/openmw/05-components-misc-stringops-use-boost-format-instead-o.patch || true"
         COMMAND patch -p1 --fuzz=3 -d <SOURCE_DIR> -i ${CMAKE_SOURCE_DIR}/patches/openmw/06-fix-build.patch
-        COMMAND sh -c "patch -p1 --fuzz=3 -d <SOURCE_DIR> -i ${CMAKE_SOURCE_DIR}/patches/openmw/08-highp.patch || true"
 
     CMAKE_ARGS
         ${COMMON_CMAKE_ARGS}
