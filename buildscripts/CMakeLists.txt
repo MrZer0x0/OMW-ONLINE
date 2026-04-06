@@ -393,12 +393,13 @@ ExternalProject_Add(lz4
 )
 
 # GL4ES
-# Переключено с URL на GIT: тег 1.1.4 был удалён из репозитория, архив возвращает 404.
-# Используем master с фиксацией на последний стабильный коммит.
+# Тег 1.1.4 удалён из репозитория → архив возвращает 404.
+# Пинимся на конкретный коммит v1.1.4 (подтверждён docent27/OMW releases).
+# GIT_SHALLOW FALSE обязателен при указании commit hash вместо ветки/тега.
 ExternalProject_Add(gl4es
     GIT_REPOSITORY https://github.com/ptitSeb/gl4es.git
-    GIT_TAG master
-    GIT_SHALLOW TRUE
+    GIT_TAG a5555c173d70d292e43c13a6d951fa06ddb413fe
+    GIT_SHALLOW FALSE
     UPDATE_DISCONNECTED TRUE
 
     CONFIGURE_COMMAND ""
