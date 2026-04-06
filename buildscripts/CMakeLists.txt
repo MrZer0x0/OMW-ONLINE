@@ -6,16 +6,16 @@ cmake_policy(SET CMP0074 NEW)
 
 # Определение версий и хешей зависимостей
 set(LIBJPEG_TURBO_VERSION "3.0.0")
-set(LIBJPEG_TURBO_HASH SHA256=c77c47200a636509c8d16c6f4f7c1a7ad41c774d553c8927a20a09651b8a2c5c)
+set(LIBJPEG_TURBO_HASH SHA256=c77c65fcce3d33417b2e90432e7a0eb05f59a7fff884022a9d931775d583bfaa)
 
 set(LIBPNG_VERSION "1.6.40")
 set(LIBPNG_HASH SHA256=8f720b363aa08683c9bf2a563236f45313af2c55d542b5481ae17dd8d183bb42)
 
 set(FREETYPE2_VERSION "2.13.2")
-set(FREETYPE2_HASH SHA256=12991c4e55c506dd7f9b765933e62fd2be2e06d421505d7950a132e4f1bb484d)
+set(FREETYPE2_HASH SHA256=1ac27e16c134a7f2ccea177faba19801131116fd682efc1f5737037c5db224b5)
 
 set(OPENAL_VERSION "1.23.1")
-set(OPENAL_HASH SHA256=dfddf3a1f61059853c625b7bb03de8433b455f2f79f89548cbcbd5edca3d4a4a)
+set(OPENAL_HASH SHA256=796f4b89134c4e57270b7f0d755f0fa3435b90da437b745160a49bd41c845b21)
 
 set(BOOST_VERSION "1.83.0")
 set(BOOST_HASH SHA256=6478edfe2f3305127cffe8caf73ea0176c53769f4bf1585be237eb30798c3b8e)
@@ -155,7 +155,7 @@ ExternalProject_Add(libpng
 
 # freetype2
 ExternalProject_Add(freetype2
-    URL https://download.savannah.gnu.org/releases/freetype/freetype-${FREETYPE2_VERSION}.tar.gz
+    URL https://download.savannah.gnu.org/releases/freetype/freetype-${FREETYPE2_VERSION}.tar.xz
     URL_HASH ${FREETYPE2_HASH}
     DOWNLOAD_DIR ${download_dir}
 
@@ -172,7 +172,7 @@ ExternalProject_Add(freetype2
 
 # OpenAL
 ExternalProject_Add(openal
-    URL https://github.com/kcat/openal-soft/archive/openal-soft-${OPENAL_VERSION}.tar.gz
+    URL https://openal-soft.org/openal-releases/openal-soft-${OPENAL_VERSION}.tar.bz2
     URL_HASH ${OPENAL_HASH}
     DOWNLOAD_DIR ${download_dir}
 
