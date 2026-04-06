@@ -448,6 +448,20 @@ ExternalProject_Add(tes3mp
     UPDATE_DISCONNECTED TRUE
     DOWNLOAD_DIR ${download_dir}
 
+    # CrabNet (RakNet fork) не является субмодулем — клонируется отдельно.
+    # Затем применяются патчи к CrabNet и TES3MP.
+    PATCH_COMMAND git clone --depth=1 https://github.com/TES3MP/CrabNet.git <SOURCE_DIR>/extern/raknet
+        COMMAND patch -p1 -d <SOURCE_DIR>/extern/raknet -i ${CMAKE_SOURCE_DIR}/patches/crabnet.patch
+        COMMAND patch -p1 -d <SOURCE_DIR> -i ${CMAKE_SOURCE_DIR}/patches/openmw/00-gamma.patch
+        COMMAND patch -p1 -d <SOURCE_DIR> -i ${CMAKE_SOURCE_DIR}/patches/openmw/01-loadingscreen-disable-for-now.patch
+        COMMAND patch -p1 -d <SOURCE_DIR> -i ${CMAKE_SOURCE_DIR}/patches/openmw/02-windowmanagerimp-always-show-mouse-when-possible-pat.patch
+        COMMAND patch -p1 -d <SOURCE_DIR> -i ${CMAKE_SOURCE_DIR}/patches/openmw/03-android-fix-context-being-lost-on-app-minimize.patch
+        COMMAND patch -p1 -d <SOURCE_DIR> -i ${CMAKE_SOURCE_DIR}/patches/openmw/04-settingswindow-save-user-settings-file-when-ok-is-pr.patch
+        COMMAND patch -p1 -d <SOURCE_DIR> -i ${CMAKE_SOURCE_DIR}/patches/openmw/05-components-misc-stringops-use-boost-format-instead-o.patch
+        COMMAND patch -p1 -d <SOURCE_DIR> -i ${CMAKE_SOURCE_DIR}/patches/openmw/06-fix-build.patch
+        COMMAND patch -p1 -d <SOURCE_DIR> -i ${CMAKE_SOURCE_DIR}/patches/openmw/07-fix-raknet.patch
+        COMMAND patch -p1 -d <SOURCE_DIR> -i ${CMAKE_SOURCE_DIR}/patches/openmw/08-highp.patch
+
     CMAKE_ARGS
         ${COMMON_CMAKE_ARGS}
         ${OPENMW_COMMON_ARGS}
