@@ -27,10 +27,10 @@ set(SDL2_VERSION "2.28.5")
 set(SDL2_HASH SHA256=332cb37d0be20cb9541739c61f79bae5a477427d79ae85e352089afdaf6666e4)
 
 set(BULLET_VERSION "3.25")
-set(BULLET_HASH SHA256=c45afb6399e3f68036ddb641c6e474b5f54f21c91350c11dbf91f861b0d6da61)
+set(BULLET_HASH SHA256=c45afb6399e3f68036ddb641c6bf6f552bf332d5ab6be62f7e6c54eda05ceb77)
 
 set(MYGUI_VERSION "3.4.1")
-set(MYGUI_HASH SHA256=072d5dd2e0636fa717dc856a573a451b3f6ae8c8da927c7ebf26d5c41cd5f4d3)
+set(MYGUI_HASH SHA256=bdf730bdeb4ad89e6b8223967db01aa5274d2b93adc2c0d6aa4842faeed4de1a)
 
 set(GL4ES_VERSION "1.1.4")
 set(GL4ES_HASH SHA256=b565e717c7d192e936bda25f3cb90ad8db398af56414ec08294b6716574c1a6d)
@@ -285,7 +285,11 @@ ExternalProject_Add(sdl2
 
     INSTALL_COMMAND mkdir -p ${prefix}/lib/
     COMMAND cp libs/${app_abi}/libSDL2.so ${prefix}/lib/
+<<<<<<< HEAD
     COMMAND sh -c "test ! -f libs/${app_abi}/libhidapi.so || cp libs/${app_abi}/libhidapi.so ${prefix}/lib/"
+=======
+    COMMAND cp libs/${app_abi}/libhidapi.so ${prefix}/lib/
+>>>>>>> 2f50fe2721ffad69a736053f300d4aa8478632d9
     COMMAND cp -r <SOURCE_DIR>/include ${prefix}/
 )
 
@@ -338,6 +342,7 @@ ExternalProject_Add(lz4
         ${COMMON_CMAKE_ARGS}
         -DBUILD_STATIC_LIBS=ON
         -DBUILD_SHARED_LIBS=OFF
+    SOURCE_SUBDIR build/cmake
 
     BUILD_COMMAND ${wrapper_command} $(MAKE)
     INSTALL_COMMAND ${wrapper_command} $(MAKE) install
