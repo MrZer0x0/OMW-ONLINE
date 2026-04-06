@@ -402,6 +402,14 @@ ExternalProject_Add(gl4es
     GIT_SHALLOW FALSE
     UPDATE_DISCONNECTED TRUE
 
+    # Применяем патчи из buildscripts/patches/gl4es/
+    # shared-library.patch: меняет BUILD_STATIC_LIBRARY -> BUILD_SHARED_LIBRARY
+    # gamma.patch: поддержка коррекции гаммы для OpenMW
+    # keyword-usage.patch: фикс ключевых слов asm/volatile для clang
+    PATCH_COMMAND patch -p1 -i ${CMAKE_SOURCE_DIR}/patches/gl4es/shared-library.patch
+        COMMAND patch -p1 -i ${CMAKE_SOURCE_DIR}/patches/gl4es/gamma.patch
+        COMMAND patch -p1 -i ${CMAKE_SOURCE_DIR}/patches/gl4es/keyword-usage.patch
+
     CONFIGURE_COMMAND ""
 
     BUILD_COMMAND ${wrapper_command} ndk-build
