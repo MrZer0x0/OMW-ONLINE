@@ -249,6 +249,7 @@ set(BOOST_B2_ARGS
     --with-program_options
     --with-system
     --with-iostreams
+    --with-regex
     toolset=clang-linux
     target-os=android
     architecture=${BOOST_ARCH}
@@ -485,6 +486,10 @@ set(OPENMW_COMMON_ARGS
     -DOPENGL_glx_LIBRARY=${prefix}/lib/libGL.so
     -DOPENGL_INCLUDE_DIR=${prefix}/include/
     -DOSG_STATIC=TRUE
+    -DMyGUI_LIBRARY=${prefix}/lib/libMyGUIEngineStatic.a
+    -DMyGUI_INCLUDE_DIR=${prefix}/include/MYGUI
+    -DOPENAL_INCLUDE_DIR=${prefix}/include/AL/
+    -DBullet_INCLUDE_DIR=${prefix}/include/bullet/
     -DBUILD_BROWSER=OFF
     -DBUILD_BSATOOL=OFF
     -DBUILD_NIFTEST=OFF
