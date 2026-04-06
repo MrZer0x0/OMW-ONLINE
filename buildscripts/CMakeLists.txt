@@ -12,7 +12,7 @@ set(LIBPNG_VERSION "1.6.40")
 set(LIBPNG_HASH SHA256=8f720b363aa08683c9bf2a563236f45313af2c55d542b5481ae17dd8d183bb42)
 
 set(FREETYPE2_VERSION "2.13.2")
-set(FREETYPE2_HASH SHA256=12991c4e55c506dd7f9b765933e62fd2be2e06d421505d7950a132e4f1bb484d)
+set(FREETYPE2_HASH SHA256=1ac27e16c134a7f2ccea177faba19801131116fd682efc1f5737037c5db224b5)
 
 set(OPENAL_VERSION "1.23.1")
 set(OPENAL_HASH SHA256=796f4b89134c4e57270b7f0d755f0fa3435b90da437b745160a49bd41c845b21)
@@ -285,6 +285,7 @@ ExternalProject_Add(sdl2
 
     INSTALL_COMMAND mkdir -p ${prefix}/lib/
     COMMAND cp libs/${app_abi}/libSDL2.so ${prefix}/lib/
+    COMMAND sh -c "test ! -f libs/${app_abi}/libhidapi.so || cp libs/${app_abi}/libhidapi.so ${prefix}/lib/"
     COMMAND cp -r <SOURCE_DIR>/include ${prefix}/
 )
 
