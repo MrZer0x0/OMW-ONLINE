@@ -459,7 +459,6 @@ ExternalProject_Add(tes3mp
         COMMAND patch -p1 -d <SOURCE_DIR> -i ${CMAKE_SOURCE_DIR}/patches/openmw/04-settingswindow-save-user-settings-file-when-ok-is-pr.patch
         COMMAND patch -p1 -d <SOURCE_DIR> -i ${CMAKE_SOURCE_DIR}/patches/openmw/05-components-misc-stringops-use-boost-format-instead-o.patch
         COMMAND patch -p1 -d <SOURCE_DIR> -i ${CMAKE_SOURCE_DIR}/patches/openmw/06-fix-build.patch
-        COMMAND patch -p1 -d <SOURCE_DIR> -i ${CMAKE_SOURCE_DIR}/patches/openmw/07-fix-raknet.patch
         COMMAND patch -p1 -d <SOURCE_DIR> -i ${CMAKE_SOURCE_DIR}/patches/openmw/08-highp.patch
 
     CMAKE_ARGS
