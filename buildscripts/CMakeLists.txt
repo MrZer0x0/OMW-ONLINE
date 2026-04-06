@@ -5,25 +5,72 @@ cmake_policy(SET CMP0091 NEW)
 cmake_policy(SET CMP0074 NEW)
 
 # Определение версий и хешей зависимостей
-set(LIBJPEG_TURBO_VERSION "3.0.0")
+# ============================================================
+# СТАТУС АКТУАЛЬНОСТИ (проверено 2026-04-06):
+#
+# libjpeg-turbo : 3.0.0  → актуальная 3.1.1  [УСТАРЕЛА]
+# libpng        : 1.6.40 → актуальная 1.6.53  [УСТАРЕЛА]
+# freetype2     : 2.13.2 → актуальная 2.13.3  [ИСПРАВЛЕНО + ОБНОВЛЕНО]
+#                  Старый хеш был для .tar.gz, а URL скачивает .tar.xz!
+# openal-soft   : 1.23.1 → актуальная 1.25.1  [УСТАРЕЛА]
+# boost         : 1.83.0 → актуальная 1.90.0  [УСТАРЕЛА]
+# ffmpeg        : 6.1    → ветка 6.1.x = 6.1.4, новые ветки 7.1.3 / 8.0.1 [УСТАРЕЛ]
+# SDL2          : 2.28.5 → актуальная 2.30.12  [УСТАРЕЛА + КОНФЛИКТ СЛИЯНИЯ ИСПРАВЛЕН]
+# bullet        : 3.25   → актуальная 3.25     [OK]
+# mygui         : 3.4.1  → требует ручной проверки
+# gl4es         : 1.1.4  → требует ручной проверки
+# lz4           : 1.9.4  → требует ручной проверки
+# tes3mp        : git    → OK
+#
+# ⚠️  Для обновлённых пакетов хеши помечены как [VERIFY HASH] —
+#     их нужно получить с официальных источников перед коммитом.
+#     Подтверждённые хеши (из официальных анонсов) помечены [CONFIRMED].
+# ============================================================
+
+# libjpeg-turbo — последняя: 3.1.1
+# [VERIFY HASH] sha256 для 3.1.1 нужно получить с:
+# https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/3.1.1/libjpeg-turbo-3.1.1.tar.gz
+set(LIBJPEG_TURBO_VERSION "3.0.0")  # TODO: обновить до 3.1.1
 set(LIBJPEG_TURBO_HASH SHA256=c77c65fcce3d33417b2e90432e7a0eb05f59a7fff884022a9d931775d583bfaa)
 
-set(LIBPNG_VERSION "1.6.40")
+# libpng — последняя: 1.6.53
+# [VERIFY HASH] sha256 для 1.6.53 нужно получить с:
+# https://sourceforge.net/projects/libpng/files/libpng16/1.6.53/
+set(LIBPNG_VERSION "1.6.40")  # TODO: обновить до 1.6.53
 set(LIBPNG_HASH SHA256=8f720b363aa08683c9bf2a563236f45313af2c55d542b5481ae17dd8d183bb42)
 
-set(FREETYPE2_VERSION "2.13.2")
-set(FREETYPE2_HASH SHA256=1ac27e16c134a7f2ccea177faba19801131116fd682efc1f5737037c5db224b5)
+# freetype2 — ИСПРАВЛЕНО: обновлено до 2.13.3
+# [CONFIRMED] хеш взят из официального анонса:
+# https://www.mail-archive.com/freetype@nongnu.org/msg05992.html
+# Проблема была: в CMakeLists хранился хеш от .tar.gz (1ac27e16...),
+# а URL скачивает .tar.xz — для них разные хеши!
+set(FREETYPE2_VERSION "2.13.3")
+set(FREETYPE2_HASH SHA256=0550350666d427c74daeb85d5ac7bb353acba5f76956395995311a9c6f063289)
 
-set(OPENAL_VERSION "1.23.1")
+# openal-soft — последняя: 1.25.1
+# [VERIFY HASH] sha256 для 1.25.1 нужно получить с:
+# https://openal-soft.org/openal-releases/openal-soft-1.25.1.tar.bz2
+set(OPENAL_VERSION "1.23.1")  # TODO: обновить до 1.25.1
 set(OPENAL_HASH SHA256=796f4b89134c4e57270b7f0d755f0fa3435b90da437b745160a49bd41c845b21)
 
-set(BOOST_VERSION "1.83.0")
+# boost — последняя: 1.90.0
+# [VERIFY HASH] sha256 для 1.90.0 нужно получить с:
+# https://archives.boost.io/release/1.90.0/source/boost_1_90_0.tar.bz2
+set(BOOST_VERSION "1.83.0")  # TODO: обновить до 1.90.0
 set(BOOST_HASH SHA256=6478edfe2f3305127cffe8caf73ea0176c53769f4bf1585be237eb30798c3b8e)
 
-set(FFMPEG_VERSION "6.1")
+# ffmpeg — текущая ветка 6.1.x: 6.1.4 (LTS), новейшая ветка 7.1.3
+# Рекомендуется сначала обновиться до 6.1.4 (минимальные изменения API),
+# затем рассмотреть переход на 7.1.x
+# [VERIFY HASH] для 6.1.4:
+# https://ffmpeg.org/releases/ffmpeg-6.1.4.tar.xz
+set(FFMPEG_VERSION "6.1")  # TODO: обновить минимум до 6.1.4
 set(FFMPEG_HASH SHA256=488c76e57dd9b3bee901f71d5c95eaf1db4a5a31fe46a28654e837144207c270)
 
-set(SDL2_VERSION "2.28.5")
+# SDL2 — последняя в ветке 2.30.x: 2.30.12
+# [VERIFY HASH] sha256 для 2.30.12:
+# https://github.com/libsdl-org/SDL/releases/download/release-2.30.12/SDL2-2.30.12.tar.gz
+set(SDL2_VERSION "2.28.5")  # TODO: обновить до 2.30.12
 set(SDL2_HASH SHA256=332cb37d0be20cb9541739c61f79bae5a477427d79ae85e352089afdaf6666e4)
 
 set(BULLET_VERSION "3.25")
@@ -273,6 +320,8 @@ ExternalProject_Add(ffmpeg
 )
 
 # SDL2
+# ИСПРАВЛЕНО: удалён конфликт слияния Git (<<<<<<< / ======= / >>>>>>>)
+# Используется вариант HEAD: безопасная проверка наличия libhidapi.so перед копированием
 ExternalProject_Add(sdl2
     URL https://github.com/libsdl-org/SDL/releases/download/release-${SDL2_VERSION}/SDL2-${SDL2_VERSION}.tar.gz
     URL_HASH ${SDL2_HASH}
@@ -285,11 +334,7 @@ ExternalProject_Add(sdl2
 
     INSTALL_COMMAND mkdir -p ${prefix}/lib/
     COMMAND cp libs/${app_abi}/libSDL2.so ${prefix}/lib/
-<<<<<<< HEAD
     COMMAND sh -c "test ! -f libs/${app_abi}/libhidapi.so || cp libs/${app_abi}/libhidapi.so ${prefix}/lib/"
-=======
-    COMMAND cp libs/${app_abi}/libhidapi.so ${prefix}/lib/
->>>>>>> 2f50fe2721ffad69a736053f300d4aa8478632d9
     COMMAND cp -r <SOURCE_DIR>/include ${prefix}/
 )
 
