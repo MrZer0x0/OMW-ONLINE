@@ -257,15 +257,6 @@ string(REPLACE "." "_" BOOST_VERSION_UNDERSCORE ${BOOST_VERSION})
 set(BOOST_USER_CONFIG ${CMAKE_BINARY_DIR}/boost.user-config.jam)
 file(GENERATE OUTPUT ${BOOST_USER_CONFIG} CONTENT "using clang-linux : : \"$ENV{CXX}\" ;\n")
 
-# Boost b2 archives static libraries with the system ar/ranlib toolchain.
-# When global ThinLTO flags are inherited from build.sh, b2 may produce LLVM
-# bitcode objects and GNU binutils then fails with the gold plugin / opaque
-# pointers error seen in CI. Build Boost without LTO; the rest of the project
-# can still use LTO later.
-set(BOOST_CFLAGS "$ENV{CFLAGS} -fno-lto")
-set(BOOST_CXXFLAGS "$ENV{CXXFLAGS} -fno-lto")
-set(BOOST_LDFLAGS "$ENV{LDFLAGS} -fno-lto")
-
 set(BOOST_B2_ARGS
     --ignore-site-config
     --user-config=${BOOST_USER_CONFIG}
@@ -283,9 +274,9 @@ set(BOOST_B2_ARGS
     link=static
     threading=multi
     runtime-link=shared
-    cflags=${BOOST_CFLAGS}
-    cxxflags=${BOOST_CXXFLAGS}
-    linkflags=${BOOST_LDFLAGS}
+    cflags=$ENV{CFLAGS}
+    cxxflags=$ENV{CXXFLAGS}
+    linkflags=$ENV{LDFLAGS}
     install
 )
 
@@ -484,6 +475,7 @@ ExternalProject_Add(osg
         COMMAND sh -c "patch -p1 -d <SOURCE_DIR> -t -N < ${CMAKE_SOURCE_DIR}/patches/osg/0004-IncrementalCompileOperation-wrap-some-stuff-in-atomi.patch || true"
         COMMAND sh -c "patch -p1 -d <SOURCE_DIR> -t -N < ${CMAKE_SOURCE_DIR}/patches/osg/0005-CullSettings-make-inheritanceMask-atomic-to-silence-.patch || true"
         COMMAND sh -c "patch -p1 -d <SOURCE_DIR> -t -N < ${CMAKE_SOURCE_DIR}/patches/osg/remove-zlib-dependency.patch || true"
+        COMMAND sh -c "python3 -c 'from pathlib import Path; p=Path(\"<SOURCE_DIR>/src/osg/State.cpp\"); s=p.read_text(); old=\"        ::glDrawBuffer(buffer);\"; new=\"#if !defined(GL_ES_VERSION_2_0) && !defined(GL_ES_VERSION_3_0)\n        ::glDrawBuffer(buffer);\n#endif\"; import sys; sys.exit(0) if old not in s else p.write_text(s.replace(old,new,1))'"
 
     CMAKE_ARGS
         ${COMMON_CMAKE_ARGS}
