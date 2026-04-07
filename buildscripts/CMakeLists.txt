@@ -419,9 +419,13 @@ ExternalProject_Add(luajit
     BUILD_IN_SOURCE 1
     CONFIGURE_COMMAND ""
 
-    BUILD_COMMAND ${wrapper_command} sh -c [[cd <SOURCE_DIR>/src && make         HOST_CC=gcc         CROSS=${NDK_TRIPLET}-         STATIC_CC="$CC"         DYNAMIC_CC="$CC -fPIC"         TARGET_LD="$CC"         TARGET_AR="llvm-ar rcus"         TARGET_STRIP=llvm-strip         TARGET_SYS=Linux         BUILDMODE=static]]
+    BUILD_COMMAND ${wrapper_command} sh -c "cd <SOURCE_DIR>/src && make HOST_CC=gcc CROSS=${NDK_TRIPLET}- STATIC_CC="$CC" DYNAMIC_CC="$CC -fPIC" TARGET_LD="$CC" TARGET_AR="llvm-ar rcus" TARGET_STRIP=llvm-strip TARGET_SYS=Linux BUILDMODE=static"
 
-    INSTALL_COMMAND ${wrapper_command} sh -c [[cd <SOURCE_DIR>/src &&         mkdir -p ${prefix}/include/luajit-2.1 ${prefix}/lib &&         cp -a *.h ${prefix}/include/luajit-2.1/ &&         cp libluajit.a ${prefix}/lib/libluajit-5.1.a &&         cp libluajit.a ${prefix}/lib/libluajit.a]]
+    INSTALL_COMMAND ${CMAKE_COMMAND} -E make_directory "${prefix}/include/luajit-2.1"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${prefix}/lib"
+    COMMAND /bin/sh -c "cp -a <SOURCE_DIR>/src/*.h ${prefix}/include/luajit-2.1/"
+    COMMAND ${CMAKE_COMMAND} -E copy "<SOURCE_DIR>/src/libluajit.a" "${prefix}/lib/libluajit-5.1.a"
+    COMMAND ${CMAKE_COMMAND} -E copy "<SOURCE_DIR>/src/libluajit.a" "${prefix}/lib/libluajit.a"
 )
 
 # GL4ES
