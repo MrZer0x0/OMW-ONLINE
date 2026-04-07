@@ -257,6 +257,15 @@ string(REPLACE "." "_" BOOST_VERSION_UNDERSCORE ${BOOST_VERSION})
 set(BOOST_USER_CONFIG ${CMAKE_BINARY_DIR}/boost.user-config.jam)
 file(GENERATE OUTPUT ${BOOST_USER_CONFIG} CONTENT "using clang-linux : : \"$ENV{CXX}\" ;\n")
 
+# Boost b2 archives static libraries with the system ar/ranlib toolchain.
+# When global ThinLTO flags are inherited from build.sh, b2 may produce LLVM
+# bitcode objects and GNU binutils then fails with the gold plugin / opaque
+# pointers error seen in CI. Build Boost without LTO; the rest of the project
+# can still use LTO later.
+set(BOOST_CFLAGS "$ENV{CFLAGS} -fno-lto")
+set(BOOST_CXXFLAGS "$ENV{CXXFLAGS} -fno-lto")
+set(BOOST_LDFLAGS "$ENV{LDFLAGS} -fno-lto")
+
 set(BOOST_B2_ARGS
     --ignore-site-config
     --user-config=${BOOST_USER_CONFIG}
@@ -274,9 +283,9 @@ set(BOOST_B2_ARGS
     link=static
     threading=multi
     runtime-link=shared
-    cflags=$ENV{CFLAGS}
-    cxxflags=$ENV{CXXFLAGS}
-    linkflags=$ENV{LDFLAGS}
+    cflags=${BOOST_CFLAGS}
+    cxxflags=${BOOST_CXXFLAGS}
+    linkflags=${BOOST_LDFLAGS}
     install
 )
 
