@@ -26,18 +26,23 @@ import android.view.View
 import android.widget.ImageView
 import org.libsdl.app.SDLActivity
 
+import android.graphics.BitmapFactory
+import constants.Constants
+import java.io.File
+
 /**
  * The attack button is special in that it allows us to control the camera a little
  */
 class OscAttackButton(
     uniqueId: String,
+    iconName: String,
     visibility: OscVisibility,
     private val imageSrc: Int,
     defaultX: Int,
     defaultY: Int,
     private val keyCode: Int,
     defaultSize: Int = 50
-) : OscElement(uniqueId, visibility, defaultX, defaultY, defaultSize) {
+) : OscElement(uniqueId, iconName, visibility, defaultX, defaultY, defaultSize) {
 
     private var curX = 0f
     private var curY = 0f
@@ -46,7 +51,12 @@ class OscAttackButton(
     @SuppressLint("ClickableViewAccessibility")
     override fun makeView(ctx: Context) {
         val v = ImageView(ctx)
-        v.setImageResource(imageSrc)
+
+        if (File(Constants.USER_FILE_STORAGE + "/launcher/icons/" + iconName).exists())
+            v.setImageBitmap(BitmapFactory.decodeFile(Constants.USER_FILE_STORAGE + "launcher/icons/" + iconName))
+        else
+            v.setImageResource(imageSrc)
+
         // fix blurry icons on old android
         v.scaleType = ImageView.ScaleType.FIT_XY
         v.setOnTouchListener(View.OnTouchListener { _, motionEvent ->

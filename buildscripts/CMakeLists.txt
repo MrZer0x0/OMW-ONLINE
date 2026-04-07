@@ -411,55 +411,24 @@ ExternalProject_Add(lz4
     INSTALL_COMMAND ${wrapper_command} $(MAKE) install
 )
 
-# LuaJIT
-set(LUAJIT_VERSION "2.1.0-beta3")
-set(LUAJIT_HASH SHA256=1ad2e34b111c802f9d0cdf019e986909123237a28c746b21295b63c9e785d9c3)
-set(LUAJIT_URLS
-    https://mirrors.mit.edu/macports/distfiles/luajit/LuaJIT-${LUAJIT_VERSION}.tar.gz
-    https://downloads.sourceforge.net/project/immortalwrt/sources/LuaJIT-${LUAJIT_VERSION}.tar.gz
-)
-
-ExternalProject_Add(luajit
-    URL ${LUAJIT_URLS}
-    URL_HASH ${LUAJIT_HASH}
-    DOWNLOAD_DIR ${download_dir}
-    BUILD_IN_SOURCE 1
-    CONFIGURE_COMMAND ""
-
-    BUILD_COMMAND ${wrapper_command} /bin/sh -c "cd <SOURCE_DIR>/src && make HOST_CC=gcc CROSS=${NDK_TRIPLET}- STATIC_CC='${NDK_TRIPLET}-clang' DYNAMIC_CC='${NDK_TRIPLET}-clang -fPIC' TARGET_LD='${NDK_TRIPLET}-clang' TARGET_AR='llvm-ar rcus' TARGET_STRIP='llvm-strip' TARGET_SYS=Linux BUILDMODE=static"
-
-    INSTALL_COMMAND ${CMAKE_COMMAND} -E make_directory "${prefix}/include/luajit-2.1"
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${prefix}/lib"
-    COMMAND /bin/sh -c "cp -a <SOURCE_DIR>/src/*.h ${prefix}/include/luajit-2.1/"
-    COMMAND ${CMAKE_COMMAND} -E copy "<SOURCE_DIR>/src/libluajit.a" "${prefix}/lib/libluajit-5.1.a"
-    COMMAND ${CMAKE_COMMAND} -E copy "<SOURCE_DIR>/src/libluajit.a" "${prefix}/lib/libluajit.a"
-)
-
 # GL4ES
 # Тег 1.1.4 удалён из репозитория → архив возвращает 404.
-# Пинимся на конкретный коммит v1.1.4 (подтверждён docent27/OMW releases).
-# GIT_SHALLOW FALSE обязателен при указании commit hash вместо ветки/тега.
+# Заменён на NG-GL4ES (sisah2/Ng-gl4es, ветка Openmw3) — более новый форк
+# с поддержкой GLSL pragma import_defines, инстансинга и DXT mipmaps.
 ExternalProject_Add(gl4es
-    GIT_REPOSITORY https://github.com/ptitSeb/gl4es.git
-    GIT_TAG a5555c173d70d292e43c13a6d951fa06ddb413fe
-    GIT_SHALLOW FALSE
-    UPDATE_DISCONNECTED TRUE
+    DOWNLOAD_COMMAND git clone --recurse-submodules https://github.com/sisah2/Ng-gl4es -b Openmw3 <SOURCE_DIR>
 
-    # Применяем патчи из buildscripts/patches/gl4es/
-    # shared-library.patch: меняет BUILD_STATIC_LIBRARY -> BUILD_SHARED_LIBRARY
-    # gamma.patch: поддержка коррекции гаммы для OpenMW
-    # keyword-usage.patch: фикс ключевых слов asm/volatile для clang
-    PATCH_COMMAND patch -p1 -i ${CMAKE_SOURCE_DIR}/patches/gl4es/shared-library.patch
-        COMMAND patch -p1 -i ${CMAKE_SOURCE_DIR}/patches/gl4es/gamma.patch
-        COMMAND patch -p1 -i ${CMAKE_SOURCE_DIR}/patches/gl4es/keyword-usage.patch
+    PATCH_COMMAND sed -i -e "s/3.22.1/3.19.6/g" <SOURCE_DIR>/3rdparty/glslang/CMakeLists.txt
+        COMMAND sed -i -e "s/CMAKE_CXX_STANDARD 23/CMAKE_CXX_STANDARD 17/g" <SOURCE_DIR>/CMakeLists.txt
 
-    CONFIGURE_COMMAND ""
+    CMAKE_ARGS
+        ${COMMON_CMAKE_ARGS}
 
-    BUILD_COMMAND ${wrapper_command} ndk-build
-    ${COMMON_NDK_BUILD_FLAGS}
+    BUILD_COMMAND ${wrapper_command} $(MAKE)
 
     INSTALL_COMMAND mkdir -p ${prefix}/lib/
-    COMMAND cp libs/${app_abi}/libGL.so ${prefix}/lib/
+    COMMAND cp libng_gl4es.so ${prefix}/lib/
+    COMMAND cp -r <SOURCE_DIR>/include ${prefix}/include/gl4es/
     COMMAND cp -r <SOURCE_DIR>/include ${prefix}/
 )
 
@@ -537,7 +506,7 @@ ExternalProject_Add(osg
         -DOSG_GL_FIXED_FUNCTION_AVAILABLE=ON
         -DBUILD_OSG_APPLICATIONS=OFF
         -DBUILD_OSG_PLUGINS_BY_DEFAULT=OFF
-        -DOPENGL_gl_LIBRARY=${prefix}/lib/libGL.so
+        -DOPENGL_gl_LIBRARY=${prefix}/lib/libng_gl4es.so
         -DCMAKE_CXX_FLAGS=-std=gnu++11\ -I${prefix}/include/\ $ENV{CXXFLAGS}
 
     BUILD_COMMAND ${wrapper_command} $(MAKE)
@@ -548,9 +517,9 @@ ExternalProject_Add(osg
 
 # OpenMW/TES3MP
 set(OPENMW_COMMON_ARGS
-    -DOPENGL_gl_LIBRARY=${prefix}/lib/libGL.so
-    -DOPENGL_glx_LIBRARY=${prefix}/lib/libGL.so
-    -DOPENGL_INCLUDE_DIR=${prefix}/include/
+    -DOPENGL_gl_LIBRARY=${prefix}/lib/libng_gl4es.so
+    -DOPENGL_glx_LIBRARY=${prefix}/lib/libng_gl4es.so
+    -DOPENGL_INCLUDE_DIR=${prefix}/include/gl4es/
     -DOSG_STATIC=TRUE
     -DMyGUI_LIBRARY=${prefix}/lib/libMyGUIEngineStatic.a
     -DMyGUI_INCLUDE_DIR=${prefix}/include/MYGUI
@@ -569,19 +538,16 @@ set(OPENMW_COMMON_ARGS
     -DBUILD_WIZARD=OFF
     -DBUILD_MYGUI_PLUGIN=OFF
     -DOPENGL_ES=ON
+    # Unity build breaks TES3MP configure on Android/CMake here:
+    # generated sources use backslashes like ub_openmw-mp\Packets.cpp,
+    # which CMake parses as invalid escape sequences.
     -DOPENMW_UNITY_BUILD=OFF
-    -DLuaJit_INCLUDE_DIR=${prefix}/include/luajit-2.1
-    -DLuaJit_LIBRARY=${prefix}/lib/libluajit-5.1.a
     -DOPENMW_LTO_BUILD=${ENABLE_LTO}
     $<$<BOOL:${ENABLE_VULKAN}>:-DOPENMW_USE_VULKAN=ON>
 )
 
 ExternalProject_Add(tes3mp
-<<<<<<< HEAD
     DEPENDS boost openal mygui ffmpeg sdl2 bullet lz4 gl4es osg luajit
-=======
-    DEPENDS boost openal mygui ffmpeg sdl2 bullet lz4 luajit gl4es osg
->>>>>>> 8014ccff15be763f41a8b1e0f04f166747320a19
 
     GIT_REPOSITORY https://github.com/MrZer0x0/TES3MP.git
     GIT_TAG Main
