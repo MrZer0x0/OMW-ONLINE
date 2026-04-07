@@ -6,8 +6,6 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 source ./include/version.sh
 
-NDK_PREBUILT="$DIR/../toolchain/ndk/toolchains/llvm/prebuilt/linux-x86_64"
-
 if [[ ! -d toolchain ]]; then
 	mkdir -p toolchain
 
@@ -17,16 +15,13 @@ if [[ ! -d toolchain ]]; then
 
 	if [[ $CCACHE = "true" ]]; then
 		echo "==> Patching common toolchain for ccache support"
-
 		pushd toolchain/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin
-
 		mv "clang" "clangX"
 		mv "clang++" "clangX++"
 		cp "$DIR/../patches/clang-ccache.sh" "clang"
 		cp "$DIR/../patches/clang++-ccache.sh" "clang++"
 		chmod +x "clang"
 		chmod +x "clang++"
-
 		popd
 	fi
 fi
@@ -36,56 +31,51 @@ pushd toolchain
 if [[ ! -d $ARCH ]]; then
 	echo "==> Setting up standalone-compatible toolchain for $ARCH (NDK r23+)"
 
+	LLVM_BIN="$(pwd)/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin"
+	LLVM_SYSROOT="$(pwd)/ndk/toolchains/llvm/prebuilt/linux-x86_64/sysroot"
+
 	mkdir -p $ARCH/bin
 
-	# Symlink all prebuilt llvm tools into $ARCH/bin
-	# NDK r23+ dropped make_standalone_toolchain.py — we wire clang directly
-	ln -sf $NDK_PREBUILT/bin $ARCH/bin_ndk
+	# NDK r23+: wrapper scripts call `$dirname/clang` so we must have
+	# the real clang binary accessible in the same bin/ directory.
+	# Symlink the actual clang/clang++ executables (not the API-versioned wrappers).
+	ln -sf $LLVM_BIN/clang   $ARCH/bin/clang
+	ln -sf $LLVM_BIN/clang++ $ARCH/bin/clang++
 
-	# Create NDK_TRIPLET-clang / clang++ wrappers pointing to API-versioned binaries
-	CLANG_BIN="$NDK_PREBUILT/bin"
+	# Create triplet-specific wrappers that forward to clang with the right --target
+	TARGET_TRIPLE="${NDK_TRIPLET}${ANDROID_API}"
 
-	# Primary compilers
-	ln -sf $CLANG_BIN/${NDK_TRIPLET}${ANDROID_API}-clang     $ARCH/bin/${NDK_TRIPLET}-clang
-	ln -sf $CLANG_BIN/${NDK_TRIPLET}${ANDROID_API}-clang++   $ARCH/bin/${NDK_TRIPLET}-clang++
+	cat > $ARCH/bin/${NDK_TRIPLET}-clang << WRAPPER
+#!/bin/bash
+exec "\$(dirname \$0)/clang" --target=${TARGET_TRIPLE} "\$@"
+WRAPPER
+	chmod +x $ARCH/bin/${NDK_TRIPLET}-clang
 
-	# Aliases gcc -> clang so old autoconf scripts work
+	cat > $ARCH/bin/${NDK_TRIPLET}-clang++ << WRAPPER
+#!/bin/bash
+exec "\$(dirname \$0)/clang++" --target=${TARGET_TRIPLE} "\$@"
+WRAPPER
+	chmod +x $ARCH/bin/${NDK_TRIPLET}-clang++
+
+	# gcc aliases so old autoconf scripts work
 	ln -sf ${NDK_TRIPLET}-clang   $ARCH/bin/${NDK_TRIPLET}-gcc
 	ln -sf ${NDK_TRIPLET}-clang++ $ARCH/bin/${NDK_TRIPLET}-g++
 
-	# ar, ranlib, strip, nm, objdump — all from llvm
+	# llvm tool symlinks (with and without triplet prefix)
 	for TOOL in ar ranlib strip nm objdump objcopy readelf; do
-		if [[ -f $CLANG_BIN/llvm-$TOOL ]]; then
-			ln -sf $CLANG_BIN/llvm-$TOOL $ARCH/bin/${NDK_TRIPLET}-$TOOL
-		fi
+		[[ -f $LLVM_BIN/llvm-$TOOL ]] && ln -sf $LLVM_BIN/llvm-$TOOL $ARCH/bin/${NDK_TRIPLET}-$TOOL || true
+		[[ -f $LLVM_BIN/llvm-$TOOL ]] && ln -sf $LLVM_BIN/llvm-$TOOL $ARCH/bin/llvm-$TOOL        || true
 	done
 
-	# llvm-* tools needed by boost and cmake (no prefix variants)
-	for TOOL in ar ranlib strip nm; do
-		if [[ -f $CLANG_BIN/llvm-$TOOL ]]; then
-			ln -sf $CLANG_BIN/llvm-$TOOL $ARCH/bin/llvm-$TOOL
-		fi
-	done
+	# ld.lld
+	[[ -f $LLVM_BIN/ld.lld ]] && ln -sf $LLVM_BIN/ld.lld $ARCH/bin/${NDK_TRIPLET}-ld || true
+	[[ -f $LLVM_BIN/ld.lld ]] && ln -sf $LLVM_BIN/ld.lld $ARCH/bin/ld.lld            || true
 
-	# ld.lld -> ld
-	if [[ -f $CLANG_BIN/ld.lld ]]; then
-		ln -sf $CLANG_BIN/ld.lld $ARCH/bin/${NDK_TRIPLET}-ld
-		ln -sf $CLANG_BIN/ld.lld $ARCH/bin/ld.lld
-	fi
+	# Sysroot symlink — needed by build.sh to find libc++_shared.so
+	ln -sf $LLVM_SYSROOT $ARCH/sysroot
 
-	# Sysroot symlink (needed for libc++_shared.so lookup in build.sh)
-	ln -sf $NDK_PREBUILT/sysroot $ARCH/sysroot
-
-	# gas-preprocessor for ffmpeg (legacy, kept for compatibility)
+	# gas-preprocessor for ffmpeg (kept for compatibility)
 	cp ../patches/gas-preprocessor.pl $ARCH/bin/ 2>/dev/null || true
-
-	if [[ $CCACHE = "true" ]]; then
-		echo "==> Patching '$ARCH' toolchain for ccache support"
-		pushd $ARCH/bin/
-		sed -i "s|\`dirname \$0\`/clang|ccache \\0|" "${NDK_TRIPLET}-clang"   2>/dev/null || true
-		sed -i "s|\`dirname \$0\`/clang|ccache \\0|" "${NDK_TRIPLET}-clang++" 2>/dev/null || true
-		popd
-	fi
 fi
 
 popd
