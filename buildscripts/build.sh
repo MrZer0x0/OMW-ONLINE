@@ -10,9 +10,10 @@ ASAN="false"
 DEPLOY_RESOURCES="true"
 LTO="true"
 BUILD_TYPE="release"
+GH_ACTIONS_BUILD="false"
 CFLAGS="-fPIC"
 CXXFLAGS="-fPIC -frtti -fexceptions"
-LDFLAGS=""
+LDFLAGS="-Wl,--undefined-version"
 
 usage() {
 	echo "Usage: ./build.sh [--help] [--asan] [--arch arch] [--debug|--release]"
@@ -64,6 +65,10 @@ while [[ $# -gt 0 ]]; do
 			DEPLOY_RESOURCES="false"
 			shift
 			;;
+		--gh_actions_build)
+			GH_ACTIONS_BUILD="true"
+			shift
+			;;
 		*)
 			echo "Invalid argument: $key"
 			exit 1
@@ -93,10 +98,10 @@ else
 fi
 
 if [[ $LTO = "true" ]]; then
-	CFLAGS="$CFLAGS -flto"
-	CXXFLAGS="$CXXFLAGS -flto"
+	CFLAGS="$CFLAGS -flto=thin"
+	CXXFLAGS="$CXXFLAGS -flto=thin"
 	# emulated-tls should not be needed in ndk r18 https://github.com/android-ndk/ndk/issues/498#issuecomment-327825754
-	LDFLAGS="$LDFLAGS -flto -Wl,-plugin-opt=-emulated-tls -fuse-ld=gold"
+	LDFLAGS="$LDFLAGS -flto=thin -Wl,-plugin-opt=-emulated-tls -fuse-ld=lld"
 fi
 
 if [[ $ARCH = "arm" ]]; then
@@ -165,7 +170,8 @@ cmake ../.. \
 	-DABI=$ABI \
 	-DBOOST_ARCH=$BOOST_ARCH \
 	-DBOOST_ADDRESS_MODEL=$BOOST_ADDRESS_MODEL \
-	-DFFMPEG_CPU=$FFMPEG_CPU
+	-DFFMPEG_CPU=$FFMPEG_CPU \
+	-DLUAJIT_HOST_CC="$LUAJIT_HOST_CC"
 make -j$NCPU
 
 popd
@@ -243,3 +249,10 @@ PATH="$DIR/toolchain/ndk/prebuilt/linux-x86_64/bin/:$DIR/toolchain/$ARCH/$NDK_TR
 $NDK_TRIPLET-strip ../app/src/main/jniLibs/$ABI/*.so
 
 echo "==> Success"
+
+if [ $GH_ACTIONS_BUILD = true ]; then
+	echo "==> GitHub Actions build: cleaning up large directories to free disk space"
+	rm -rf ./build
+	rm -rf ./downloads
+	rm -rf ./toolchain
+fi

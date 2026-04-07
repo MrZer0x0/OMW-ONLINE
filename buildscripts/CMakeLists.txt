@@ -84,6 +84,8 @@ set(MYGUI_HASH SHA256=bdf730bdeb4ad89e6b8223967db01aa5274d2b93adc2c0d6aa4842faee
 set(LZ4_VERSION "1.9.4")
 set(LZ4_HASH SHA256=0b0e3aa07c8c063ddf40b082bdf7e37a1562bda40a0ff5272957f3e987e0e54b)
 
+set(LUAJIT_VERSION "2.1.ROLLING")
+
 set(TES3MP_VERSION "0.8.1")
 set(TES3MP_HASH SHA256=5f809dfb47586c8d7e6efe12eb2c32b5fc69dfa68f1d13962dda950168727d75)
 
@@ -129,6 +131,11 @@ set(ANDROID_STL c++_shared)
 set(ANDROID_CPP_FEATURES "rtti exceptions")
 
 include(ExternalProject)
+
+# LuaJIT host compiler (passed from build.sh, needed for cross-compilation)
+if(NOT DEFINED LUAJIT_HOST_CC)
+    set(LUAJIT_HOST_CC "gcc")
+endif()
 
 # Настройка путей
 set(wrapper_command ${CMAKE_BINARY_DIR}/command_wrapper.sh)
@@ -432,6 +439,34 @@ ExternalProject_Add(gl4es
     COMMAND cp -r <SOURCE_DIR>/include ${prefix}/
 )
 
+# LuaJIT (требуется TES3MP)
+set(LUAJIT_MAKE_FLAGS
+	HOST_CC=${LUAJIT_HOST_CC}
+	CFLAGS=
+	TARGET_CFLAGS=$ENV{CFLAGS}
+	CROSS=llvm-
+	STATIC_CC=${host}-clang
+	DYNAMIC_CC=${host}-clang\ -fPIC
+	TARGET_LD=${host}-clang
+	PREFIX=${prefix}
+)
+
+ExternalProject_Add(luajit
+	URL https://github.com/luaJIT/LuaJIT/archive/v${LUAJIT_VERSION}.tar.gz
+	DOWNLOAD_DIR ${download_dir}
+
+	BUILD_IN_SOURCE 1
+
+	CONFIGURE_COMMAND ""
+
+	BUILD_COMMAND ${wrapper_command} $(MAKE) amalg
+	${LUAJIT_MAKE_FLAGS}
+
+	INSTALL_COMMAND ${wrapper_command} $(MAKE) install
+	${LUAJIT_MAKE_FLAGS}
+	COMMAND bash -c "rm -f ${prefix}/lib/libluajit*.so*"
+)
+
 # OpenSceneGraph (openmw/osg fork)
 ExternalProject_Add(osg
     DEPENDS libjpeg-turbo libpng freetype2 gl4es
@@ -497,6 +532,8 @@ set(OPENMW_COMMON_ARGS
     -DMyGUI_INCLUDE_DIR=${prefix}/include/MYGUI
     -DOPENAL_INCLUDE_DIR=${prefix}/include/AL/
     -DBullet_INCLUDE_DIR=${prefix}/include/bullet/
+    -DLuaJit_INCLUDE_DIR=${prefix}/include/luajit-2.1
+    -DLuaJit_LIBRARY=${prefix}/lib/libluajit-5.1.a
     -DBUILD_BROWSER=OFF
     -DBUILD_BSATOOL=OFF
     -DBUILD_NIFTEST=OFF
@@ -517,7 +554,7 @@ set(OPENMW_COMMON_ARGS
 )
 
 ExternalProject_Add(tes3mp
-    DEPENDS boost openal mygui ffmpeg sdl2 bullet lz4 gl4es osg
+    DEPENDS boost openal mygui ffmpeg sdl2 bullet lz4 gl4es osg luajit
 
     GIT_REPOSITORY https://github.com/MrZer0x0/TES3MP.git
     GIT_TAG Main
