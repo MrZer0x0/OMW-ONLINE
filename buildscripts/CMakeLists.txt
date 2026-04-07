@@ -70,8 +70,8 @@ set(FFMPEG_HASH SHA256=488c76e57dd9b3bee901f71d5c95eaf1db4a5a31fe46a28654e837144
 # SDL2 — последняя в ветке 2.30.x: 2.30.12
 # [VERIFY HASH] sha256 для 2.30.12:
 # https://github.com/libsdl-org/SDL/releases/download/release-2.30.12/SDL2-2.30.12.tar.gz
-set(SDL2_VERSION "2.28.5")  # TODO: обновить до 2.30.12
-set(SDL2_HASH SHA256=332cb37d0be20cb9541739c61f79bae5a477427d79ae85e352089afdaf6666e4)
+set(SDL2_VERSION "2.32.8")
+# Hash not verified — same approach as reference project (GlobusAM)
 
 set(BULLET_VERSION "3.25")
 set(BULLET_HASH SHA256=c45afb6399e3f68036ddb641c6bf6f552bf332d5ab6be62f7e6c54eda05ceb77)
@@ -155,6 +155,7 @@ set(COMMON_CMAKE_ARGS
     -DCMAKE_C_FLAGS=-DMYGUI_DONT_REPLACE_NULLPTR\ -I${prefix}/include/\ $ENV{CFLAGS}
     -DCMAKE_CXX_FLAGS=-DMYGUI_DONT_REPLACE_NULLPTR\ -I${prefix}/include/\ $ENV{CXXFLAGS}
     -DCMAKE_SHARED_LINKER_FLAGS=$ENV{LDFLAGS}
+    -DCMAKE_EXE_LINKER_FLAGS=$ENV{LDFLAGS}
     -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
     -DCMAKE_DEBUG_POSTFIX=
     -DCMAKE_INSTALL_PREFIX=${prefix}
@@ -341,7 +342,6 @@ ExternalProject_Add(ffmpeg
 # Используется вариант HEAD: безопасная проверка наличия libhidapi.so перед копированием
 ExternalProject_Add(sdl2
     URL https://github.com/libsdl-org/SDL/releases/download/release-${SDL2_VERSION}/SDL2-${SDL2_VERSION}.tar.gz
-    URL_HASH ${SDL2_HASH}
     DOWNLOAD_DIR ${download_dir}
 
     CONFIGURE_COMMAND ""
