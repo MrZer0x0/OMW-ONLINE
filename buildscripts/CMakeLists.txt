@@ -407,10 +407,13 @@ ExternalProject_Add(lz4
 # LuaJIT
 set(LUAJIT_VERSION "2.1.0-beta3")
 set(LUAJIT_HASH SHA256=1ad2e34b111c802f9d0cdf019e986909123237a28c746b21295b63c9e785d9c3)
-set(LUAJIT_URL https://luajit.org/download/LuaJIT-${LUAJIT_VERSION}.tar.gz)
+set(LUAJIT_URLS
+    https://mirrors.mit.edu/macports/distfiles/luajit/LuaJIT-${LUAJIT_VERSION}.tar.gz
+    https://downloads.sourceforge.net/project/immortalwrt/sources/LuaJIT-${LUAJIT_VERSION}.tar.gz
+)
 
 ExternalProject_Add(luajit
-    URL ${LUAJIT_URL}
+    URL ${LUAJIT_URLS}
     URL_HASH ${LUAJIT_HASH}
     DOWNLOAD_DIR ${download_dir}
     BUILD_IN_SOURCE 1
