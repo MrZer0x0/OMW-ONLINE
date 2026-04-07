@@ -191,8 +191,9 @@ if [ -f "prefix/$ARCH/lib/libhidapi.so" ]; then
 	cp prefix/$ARCH/lib/libhidapi.so ../app/src/main/jniLibs/$ABI/
 fi
 
-# copy over libc++_shared
-find ./toolchain/$ARCH/sysroot/usr/lib/$NDK_TRIPLET -iname "libc++_shared.so" -exec cp "{}" ../app/src/main/jniLibs/$ABI/ \;
+# copy over libc++_shared (NDK r27b: directly in sysroot, via $ARCH/sysroot symlink)
+find ./toolchain/$ARCH/sysroot/usr/lib/$NDK_TRIPLET -iname "libc++_shared.so" -exec cp "{}" ../app/src/main/jniLibs/$ABI/ \; 2>/dev/null || \
+find ./toolchain/ndk/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/$NDK_TRIPLET -iname "libc++_shared.so" -exec cp "{}" ../app/src/main/jniLibs/$ABI/ \;
 
 if [[ $DEPLOY_RESOURCES = "true" ]]; then
 	echo "==> Deploying resources"
