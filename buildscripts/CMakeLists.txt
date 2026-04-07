@@ -404,6 +404,23 @@ ExternalProject_Add(lz4
     INSTALL_COMMAND ${wrapper_command} $(MAKE) install
 )
 
+# LuaJIT
+set(LUAJIT_VERSION "2.1.0-beta3")
+set(LUAJIT_HASH SHA256=1ad2e34b111c802f9d0cdf019e986909123237a28c746b21295b63c9e785d9c3)
+set(LUAJIT_URL https://luajit.org/download/LuaJIT-${LUAJIT_VERSION}.tar.gz)
+
+ExternalProject_Add(luajit
+    URL ${LUAJIT_URL}
+    URL_HASH ${LUAJIT_HASH}
+    DOWNLOAD_DIR ${download_dir}
+    BUILD_IN_SOURCE 1
+    CONFIGURE_COMMAND ""
+
+    BUILD_COMMAND ${wrapper_command} sh -c [[cd <SOURCE_DIR>/src && make         HOST_CC=gcc         CROSS=${NDK_TRIPLET}-         STATIC_CC="$CC"         DYNAMIC_CC="$CC -fPIC"         TARGET_LD="$CC"         TARGET_AR="llvm-ar rcus"         TARGET_STRIP=llvm-strip         TARGET_SYS=Linux         BUILDMODE=static]]
+
+    INSTALL_COMMAND ${wrapper_command} sh -c [[cd <SOURCE_DIR>/src &&         mkdir -p ${prefix}/include/luajit-2.1 ${prefix}/lib &&         cp -a *.h ${prefix}/include/luajit-2.1/ &&         cp libluajit.a ${prefix}/lib/libluajit-5.1.a &&         cp libluajit.a ${prefix}/lib/libluajit.a]]
+)
+
 # GL4ES
 # Тег 1.1.4 удалён из репозитория → архив возвращает 404.
 # Пинимся на конкретный коммит v1.1.4 (подтверждён docent27/OMW releases).
@@ -508,16 +525,15 @@ set(OPENMW_COMMON_ARGS
     -DBUILD_WIZARD=OFF
     -DBUILD_MYGUI_PLUGIN=OFF
     -DOPENGL_ES=ON
-    # Unity build breaks TES3MP configure on Android/CMake here:
-    # generated sources use backslashes like ub_openmw-mp\Packets.cpp,
-    # which CMake parses as invalid escape sequences.
     -DOPENMW_UNITY_BUILD=OFF
+    -DLuaJit_INCLUDE_DIR=${prefix}/include/luajit-2.1
+    -DLuaJit_LIBRARY=${prefix}/lib/libluajit-5.1.a
     -DOPENMW_LTO_BUILD=${ENABLE_LTO}
     $<$<BOOL:${ENABLE_VULKAN}>:-DOPENMW_USE_VULKAN=ON>
 )
 
 ExternalProject_Add(tes3mp
-    DEPENDS boost openal mygui ffmpeg sdl2 bullet lz4 gl4es osg
+    DEPENDS boost openal mygui ffmpeg sdl2 bullet lz4 luajit gl4es osg
 
     GIT_REPOSITORY https://github.com/MrZer0x0/TES3MP.git
     GIT_TAG Main
