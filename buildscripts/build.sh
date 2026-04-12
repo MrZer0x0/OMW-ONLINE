@@ -10,10 +10,9 @@ ASAN="false"
 DEPLOY_RESOURCES="true"
 LTO="true"
 BUILD_TYPE="release"
-GH_ACTIONS_BUILD="false"
 CFLAGS="-fPIC"
 CXXFLAGS="-fPIC -frtti -fexceptions"
-LDFLAGS="-Wl,--undefined-version"
+LDFLAGS=""
 
 usage() {
 	echo "Usage: ./build.sh [--help] [--asan] [--arch arch] [--debug|--release]"
@@ -65,10 +64,6 @@ while [[ $# -gt 0 ]]; do
 			DEPLOY_RESOURCES="false"
 			shift
 			;;
-		--gh_actions_build)
-			GH_ACTIONS_BUILD="true"
-			shift
-			;;
 		*)
 			echo "Invalid argument: $key"
 			exit 1
@@ -98,10 +93,10 @@ else
 fi
 
 if [[ $LTO = "true" ]]; then
-	CFLAGS="$CFLAGS -flto=thin"
-	CXXFLAGS="$CXXFLAGS -flto=thin"
+	CFLAGS="$CFLAGS -flto"
+	CXXFLAGS="$CXXFLAGS -flto"
 	# emulated-tls should not be needed in ndk r18 https://github.com/android-ndk/ndk/issues/498#issuecomment-327825754
-	LDFLAGS="$LDFLAGS -flto=thin -Wl,-plugin-opt=-emulated-tls -fuse-ld=lld"
+	LDFLAGS="$LDFLAGS -flto -Wl,-plugin-opt=-emulated-tls -fuse-ld=gold"
 fi
 
 if [[ $ARCH = "arm" ]]; then
@@ -170,8 +165,7 @@ cmake ../.. \
 	-DABI=$ABI \
 	-DBOOST_ARCH=$BOOST_ARCH \
 	-DBOOST_ADDRESS_MODEL=$BOOST_ADDRESS_MODEL \
-	-DFFMPEG_CPU=$FFMPEG_CPU \
-	-DLUAJIT_HOST_CC="$LUAJIT_HOST_CC"
+	-DFFMPEG_CPU=$FFMPEG_CPU
 make -j$NCPU
 
 popd
@@ -186,14 +180,13 @@ mkdir -p ../app/src/main/jniLibs/$ABI/
 find build/$ARCH/tes3mp-prefix/ -iname "libtes3mp.so" -exec cp "{}" ../app/src/main/jniLibs/$ABI/libtes3mp.so \;
 
 # copy over libs we compiled
-cp prefix/$ARCH/lib/{libopenal,libSDL2,libng_gl4es}.so ../app/src/main/jniLibs/$ABI/
+cp prefix/$ARCH/lib/{libopenal,libSDL2,libGL}.so ../app/src/main/jniLibs/$ABI/
 if [ -f "prefix/$ARCH/lib/libhidapi.so" ]; then
 	cp prefix/$ARCH/lib/libhidapi.so ../app/src/main/jniLibs/$ABI/
 fi
 
-# copy over libc++_shared (NDK r27b: directly in sysroot, via $ARCH/sysroot symlink)
-find ./toolchain/$ARCH/sysroot/usr/lib/$NDK_TRIPLET -iname "libc++_shared.so" -exec cp "{}" ../app/src/main/jniLibs/$ABI/ \; 2>/dev/null || \
-find ./toolchain/ndk/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/$NDK_TRIPLET -iname "libc++_shared.so" -exec cp "{}" ../app/src/main/jniLibs/$ABI/ \;
+# copy over libc++_shared
+find ./toolchain/$ARCH/sysroot/usr/lib/$NDK_TRIPLET -iname "libc++_shared.so" -exec cp "{}" ../app/src/main/jniLibs/$ABI/ \;
 
 if [[ $DEPLOY_RESOURCES = "true" ]]; then
 	echo "==> Deploying resources"
@@ -233,7 +226,7 @@ if [ -f "./build/$ARCH/sdl2-prefix/src/sdl2-build/obj/local/$ABI/libhidapi.so" ]
 	cp "./build/$ARCH/sdl2-prefix/src/sdl2-build/obj/local/$ABI/libhidapi.so" "./symbols/$ABI/"
 fi
 cp "./build/$ARCH/tes3mp-prefix/src/tes3mp-build/libtes3mp.so" "./symbols/$ABI/libtes3mp.so"
-#cp "./build/$ARCH/gl4es-prefix/src/gl4es-build/libng_gl4es.so" "./symbols/$ABI/"
+cp "./build/$ARCH/gl4es-prefix/src/gl4es-build/obj/local/$ABI/libGL.so" "./symbols/$ABI/"
 cp "../app/src/main/jniLibs/$ABI/libc++_shared.so" "./symbols/$ABI/"
 
 if [ $ASAN = true ]; then
@@ -250,10 +243,3 @@ PATH="$DIR/toolchain/ndk/prebuilt/linux-x86_64/bin/:$DIR/toolchain/$ARCH/$NDK_TR
 $NDK_TRIPLET-strip ../app/src/main/jniLibs/$ABI/*.so
 
 echo "==> Success"
-
-if [ $GH_ACTIONS_BUILD = true ]; then
-	echo "==> GitHub Actions build: cleaning up large directories to free disk space"
-	rm -rf ./build
-	rm -rf ./downloads
-	rm -rf ./toolchain
-fi

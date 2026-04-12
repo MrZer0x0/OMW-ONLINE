@@ -70,8 +70,8 @@ set(FFMPEG_HASH SHA256=488c76e57dd9b3bee901f71d5c95eaf1db4a5a31fe46a28654e837144
 # SDL2 — последняя в ветке 2.30.x: 2.30.12
 # [VERIFY HASH] sha256 для 2.30.12:
 # https://github.com/libsdl-org/SDL/releases/download/release-2.30.12/SDL2-2.30.12.tar.gz
-set(SDL2_VERSION "2.32.8")
-# Hash not verified — same approach as reference project (GlobusAM)
+set(SDL2_VERSION "2.28.5")  # TODO: обновить до 2.30.12
+set(SDL2_HASH SHA256=332cb37d0be20cb9541739c61f79bae5a477427d79ae85e352089afdaf6666e4)
 
 set(BULLET_VERSION "3.25")
 set(BULLET_HASH SHA256=c45afb6399e3f68036ddb641c6bf6f552bf332d5ab6be62f7e6c54eda05ceb77)
@@ -83,8 +83,6 @@ set(MYGUI_HASH SHA256=bdf730bdeb4ad89e6b8223967db01aa5274d2b93adc2c0d6aa4842faee
 
 set(LZ4_VERSION "1.9.4")
 set(LZ4_HASH SHA256=0b0e3aa07c8c063ddf40b082bdf7e37a1562bda40a0ff5272957f3e987e0e54b)
-
-set(LUAJIT_VERSION "2.1.ROLLING")
 
 set(TES3MP_VERSION "0.8.1")
 set(TES3MP_HASH SHA256=5f809dfb47586c8d7e6efe12eb2c32b5fc69dfa68f1d13962dda950168727d75)
@@ -132,11 +130,6 @@ set(ANDROID_CPP_FEATURES "rtti exceptions")
 
 include(ExternalProject)
 
-# LuaJIT host compiler (passed from build.sh, needed for cross-compilation)
-if(NOT DEFINED LUAJIT_HOST_CC)
-    set(LUAJIT_HOST_CC "gcc")
-endif()
-
 # Настройка путей
 set(wrapper_command ${CMAKE_BINARY_DIR}/command_wrapper.sh)
 set(download_dir ${CMAKE_SOURCE_DIR}/downloads/)
@@ -155,7 +148,6 @@ set(COMMON_CMAKE_ARGS
     -DCMAKE_C_FLAGS=-DMYGUI_DONT_REPLACE_NULLPTR\ -I${prefix}/include/\ $ENV{CFLAGS}
     -DCMAKE_CXX_FLAGS=-DMYGUI_DONT_REPLACE_NULLPTR\ -I${prefix}/include/\ $ENV{CXXFLAGS}
     -DCMAKE_SHARED_LINKER_FLAGS=$ENV{LDFLAGS}
-    -DCMAKE_EXE_LINKER_FLAGS=$ENV{LDFLAGS}
     -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
     -DCMAKE_DEBUG_POSTFIX=
     -DCMAKE_INSTALL_PREFIX=${prefix}
@@ -342,6 +334,7 @@ ExternalProject_Add(ffmpeg
 # Используется вариант HEAD: безопасная проверка наличия libhidapi.so перед копированием
 ExternalProject_Add(sdl2
     URL https://github.com/libsdl-org/SDL/releases/download/release-${SDL2_VERSION}/SDL2-${SDL2_VERSION}.tar.gz
+    URL_HASH ${SDL2_HASH}
     DOWNLOAD_DIR ${download_dir}
 
     CONFIGURE_COMMAND ""
@@ -413,51 +406,30 @@ ExternalProject_Add(lz4
 
 # GL4ES
 # Тег 1.1.4 удалён из репозитория → архив возвращает 404.
-# Заменён на NG-GL4ES (sisah2/Ng-gl4es, ветка Openmw3) — более новый форк
-# с поддержкой GLSL pragma import_defines, инстансинга и DXT mipmaps.
+# Пинимся на конкретный коммит v1.1.4 (подтверждён docent27/OMW releases).
+# GIT_SHALLOW FALSE обязателен при указании commit hash вместо ветки/тега.
 ExternalProject_Add(gl4es
-    DOWNLOAD_COMMAND git clone --recurse-submodules https://github.com/sisah2/Ng-gl4es -b Openmw3 <SOURCE_DIR>
+    GIT_REPOSITORY https://github.com/ptitSeb/gl4es.git
+    GIT_TAG a5555c173d70d292e43c13a6d951fa06ddb413fe
+    GIT_SHALLOW FALSE
+    UPDATE_DISCONNECTED TRUE
 
-    PATCH_COMMAND sed -i -e "s/3.22.1/3.19.6/g" <SOURCE_DIR>/3rdparty/glslang/CMakeLists.txt
-        COMMAND sed -i -e "s/CMAKE_CXX_STANDARD 23/CMAKE_CXX_STANDARD 17/g" <SOURCE_DIR>/CMakeLists.txt
+    # Применяем патчи из buildscripts/patches/gl4es/
+    # shared-library.patch: меняет BUILD_STATIC_LIBRARY -> BUILD_SHARED_LIBRARY
+    # gamma.patch: поддержка коррекции гаммы для OpenMW
+    # keyword-usage.patch: фикс ключевых слов asm/volatile для clang
+    PATCH_COMMAND patch -p1 -i ${CMAKE_SOURCE_DIR}/patches/gl4es/shared-library.patch
+        COMMAND patch -p1 -i ${CMAKE_SOURCE_DIR}/patches/gl4es/gamma.patch
+        COMMAND patch -p1 -i ${CMAKE_SOURCE_DIR}/patches/gl4es/keyword-usage.patch
 
-    CMAKE_ARGS
-        ${COMMON_CMAKE_ARGS}
+    CONFIGURE_COMMAND ""
 
-    BUILD_COMMAND ${wrapper_command} $(MAKE)
+    BUILD_COMMAND ${wrapper_command} ndk-build
+    ${COMMON_NDK_BUILD_FLAGS}
 
     INSTALL_COMMAND mkdir -p ${prefix}/lib/
-    COMMAND cp libng_gl4es.so ${prefix}/lib/
-    COMMAND cp -r <SOURCE_DIR>/include ${prefix}/include/gl4es/
+    COMMAND cp libs/${app_abi}/libGL.so ${prefix}/lib/
     COMMAND cp -r <SOURCE_DIR>/include ${prefix}/
-)
-
-# LuaJIT (требуется TES3MP)
-set(LUAJIT_MAKE_FLAGS
-	HOST_CC=${LUAJIT_HOST_CC}
-	CFLAGS=
-	TARGET_CFLAGS=$ENV{CFLAGS}
-	CROSS=llvm-
-	STATIC_CC=${host}-clang
-	DYNAMIC_CC=${host}-clang\ -fPIC
-	TARGET_LD=${host}-clang
-	PREFIX=${prefix}
-)
-
-ExternalProject_Add(luajit
-	URL https://github.com/luaJIT/LuaJIT/archive/v${LUAJIT_VERSION}.tar.gz
-	DOWNLOAD_DIR ${download_dir}
-
-	BUILD_IN_SOURCE 1
-
-	CONFIGURE_COMMAND ""
-
-	BUILD_COMMAND ${wrapper_command} $(MAKE) amalg
-	${LUAJIT_MAKE_FLAGS}
-
-	INSTALL_COMMAND ${wrapper_command} $(MAKE) install
-	${LUAJIT_MAKE_FLAGS}
-	COMMAND bash -c "rm -f ${prefix}/lib/libluajit*.so*"
 )
 
 # OpenSceneGraph (openmw/osg fork)
@@ -475,7 +447,6 @@ ExternalProject_Add(osg
         COMMAND sh -c "patch -p1 -d <SOURCE_DIR> -t -N < ${CMAKE_SOURCE_DIR}/patches/osg/0004-IncrementalCompileOperation-wrap-some-stuff-in-atomi.patch || true"
         COMMAND sh -c "patch -p1 -d <SOURCE_DIR> -t -N < ${CMAKE_SOURCE_DIR}/patches/osg/0005-CullSettings-make-inheritanceMask-atomic-to-silence-.patch || true"
         COMMAND sh -c "patch -p1 -d <SOURCE_DIR> -t -N < ${CMAKE_SOURCE_DIR}/patches/osg/remove-zlib-dependency.patch || true"
-        COMMAND sh -c "python3 -c 'from pathlib import Path; p=Path(\"<SOURCE_DIR>/src/osg/State.cpp\"); s=p.read_text(); old=\"        ::glDrawBuffer(buffer);\"; new=\"#if !defined(GL_ES_VERSION_2_0) && !defined(GL_ES_VERSION_3_0)\n        ::glDrawBuffer(buffer);\n#endif\"; import sys; sys.exit(0) if old not in s else p.write_text(s.replace(old,new,1))'"
 
     CMAKE_ARGS
         ${COMMON_CMAKE_ARGS}
@@ -507,7 +478,7 @@ ExternalProject_Add(osg
         -DOSG_GL_FIXED_FUNCTION_AVAILABLE=ON
         -DBUILD_OSG_APPLICATIONS=OFF
         -DBUILD_OSG_PLUGINS_BY_DEFAULT=OFF
-        -DOPENGL_gl_LIBRARY=${prefix}/lib/libng_gl4es.so
+        -DOPENGL_gl_LIBRARY=${prefix}/lib/libGL.so
         -DCMAKE_CXX_FLAGS=-std=gnu++11\ -I${prefix}/include/\ $ENV{CXXFLAGS}
 
     BUILD_COMMAND ${wrapper_command} $(MAKE)
@@ -518,16 +489,14 @@ ExternalProject_Add(osg
 
 # OpenMW/TES3MP
 set(OPENMW_COMMON_ARGS
-    -DOPENGL_gl_LIBRARY=${prefix}/lib/libng_gl4es.so
-    -DOPENGL_glx_LIBRARY=${prefix}/lib/libng_gl4es.so
-    -DOPENGL_INCLUDE_DIR=${prefix}/include/gl4es/
+    -DOPENGL_gl_LIBRARY=${prefix}/lib/libGL.so
+    -DOPENGL_glx_LIBRARY=${prefix}/lib/libGL.so
+    -DOPENGL_INCLUDE_DIR=${prefix}/include/
     -DOSG_STATIC=TRUE
     -DMyGUI_LIBRARY=${prefix}/lib/libMyGUIEngineStatic.a
     -DMyGUI_INCLUDE_DIR=${prefix}/include/MYGUI
     -DOPENAL_INCLUDE_DIR=${prefix}/include/AL/
     -DBullet_INCLUDE_DIR=${prefix}/include/bullet/
-    -DLuaJit_INCLUDE_DIR=${prefix}/include/luajit-2.1
-    -DLuaJit_LIBRARY=${prefix}/lib/libluajit-5.1.a
     -DBUILD_BROWSER=OFF
     -DBUILD_BSATOOL=OFF
     -DBUILD_NIFTEST=OFF
@@ -539,16 +508,13 @@ set(OPENMW_COMMON_ARGS
     -DBUILD_WIZARD=OFF
     -DBUILD_MYGUI_PLUGIN=OFF
     -DOPENGL_ES=ON
-    # Unity build breaks TES3MP configure on Android/CMake here:
-    # generated sources use backslashes like ub_openmw-mp\Packets.cpp,
-    # which CMake parses as invalid escape sequences.
-    -DOPENMW_UNITY_BUILD=OFF
+    -DOPENMW_UNITY_BUILD=ON
     -DOPENMW_LTO_BUILD=${ENABLE_LTO}
     $<$<BOOL:${ENABLE_VULKAN}>:-DOPENMW_USE_VULKAN=ON>
 )
 
 ExternalProject_Add(tes3mp
-    DEPENDS boost openal mygui ffmpeg sdl2 bullet lz4 gl4es osg luajit
+    DEPENDS boost openal mygui ffmpeg sdl2 bullet lz4 gl4es osg
 
     GIT_REPOSITORY https://github.com/MrZer0x0/TES3MP.git
     GIT_TAG Main

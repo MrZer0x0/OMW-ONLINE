@@ -5,10 +5,7 @@
 export PKG_CONFIG_LIBDIR="$DIR/prefix/$ARCH/lib/pkgconfig"
 export CC="$NDK_TRIPLET-clang"
 export CXX="$NDK_TRIPLET-clang++"
-
-# NDK r27b: include both our symlink bin/ and the prebuilt llvm bin/
-NDK_LLVM_BIN="$DIR/toolchain/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin"
-export PATH="$DIR/toolchain/$ARCH/bin/:$NDK_LLVM_BIN:$DIR/toolchain/ndk/:$PATH"
+export PATH="$DIR/toolchain/$ARCH/bin/:$DIR/toolchain/ndk/:$PATH"
 
 export CFLAGS="$ENV_CFLAGS"
 export CXXFLAGS="$ENV_CXXFLAGS"

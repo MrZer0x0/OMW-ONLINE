@@ -40,15 +40,9 @@ import ui.controls.Osc
 
 import utils.Utils.hideAndroidControls
 
-import android.util.DisplayMetrics
-import android.os.AsyncTask
-import android.widget.ImageView
-import android.widget.TextView
-import android.graphics.Typeface
-import android.graphics.Rect
-
-import java.io.File
-
+/**
+ * Enum for different mouse modes as specified in settings
+ */
 enum class MouseMode {
     Hybrid,
     Joystick,
@@ -65,50 +59,6 @@ enum class MouseMode {
     }
 }
 
-private fun patchShaders() {
-    fun patch(path: String, transform: (String) -> String) {
-        val f = File(path)
-        if (!f.exists()) return
-        var content = f.readText()
-        if (content.contains("#pragma CONVERTED")) return
-        f.writeText(transform(content) + "\n#pragma CONVERTED\n")
-    }
-
-    val base = Constants.USER_FILE_STORAGE + "/resources/shaders/compatibility/"
-    val lib  = Constants.USER_FILE_STORAGE + "/resources/shaders/lib/light/"
-
-    patch(base + "groundcover.frag") { c -> c
-        .replace("#define GROUNDCOVER", "#define GROUNDCOVER\n#pragma import_defines(WRITE_NORMALS, CLASSIC_FALLOFF, MAX_LIGHTS)\n")
-        .replace("#if !@disableNormals", "#if defined(WRITE_NORMALS) && WRITE_NORMALS") }
-    patch(base + "groundcover.vert") { c -> c
-        .replace("#version 120\n", "#version 120\n#pragma import_defines(CLASSIC_FALLOFF, MAX_LIGHTS)\n") }
-    patch(base + "objects.frag") { c -> c
-        .replace("(FORCE_OPAQUE, DISTORTION)", "(FORCE_OPAQUE, DISTORTION, FORCE_PPL, WRITE_NORMALS, CLASSIC_FALLOFF, MAX_LIGHTS)")
-        .replace("#define PER_PIXEL_LIGHTING (@normalMap || @specularMap || @forcePPL)", "#if defined(FORCE_PPL)\n#define PER_PIXEL_LIGHTING (@normalMap || @specularMap || FORCE_PPL)\n#else\n#define PER_PIXEL_LIGHTING (@normalMap || @specularMap || @forcePPL)\n#endif")
-        .replace("#if !defined(FORCE_OPAQUE) && !@disableNormals", "#if !defined(FORCE_OPAQUE) && defined(WRITE_NORMALS) && WRITE_NORMALS") }
-    patch(base + "objects.vert") { c -> c
-        .replace("#version 120", "#version 120\n#pragma import_defines(FORCE_PPL, CLASSIC_FALLOFF, MAX_LIGHTS)\n")
-        .replace("#define PER_PIXEL_LIGHTING (@normalMap || @specularMap || @forcePPL)", "#if defined(FORCE_PPL)\n#define PER_PIXEL_LIGHTING (@normalMap || @specularMap || FORCE_PPL)\n#else\n#define PER_PIXEL_LIGHTING (@normalMap || @specularMap || @forcePPL)\n#endif") }
-    patch(base + "terrain.frag") { c -> c
-        .replace("#version 120", "#version 120\n#pragma import_defines(WRITE_NORMALS, FORCE_PPL, CLASSIC_FALLOFF, MAX_LIGHTS)\n")
-        .replace("#define PER_PIXEL_LIGHTING (@normalMap || @specularMap || @forcePPL)", "#if defined(FORCE_PPL)\n#define PER_PIXEL_LIGHTING (@normalMap || @specularMap || FORCE_PPL)\n#else\n#define PER_PIXEL_LIGHTING (@normalMap || @specularMap || @forcePPL)\n#endif")
-        .replace("#if !@disableNormals && @writeNormals", "#if defined(WRITE_NORMALS) && WRITE_NORMALS && @writeNormals") }
-    patch(base + "terrain.vert") { c -> c
-        .replace("#version 120", "#version 120\n#pragma import_defines(FORCE_PPL, CLASSIC_FALLOFF, MAX_LIGHTS)\n")
-        .replace("#define PER_PIXEL_LIGHTING (@normalMap || @specularMap || @forcePPL)", "#if defined(FORCE_PPL)\n#define PER_PIXEL_LIGHTING (@normalMap || @specularMap || FORCE_PPL)\n#else\n#define PER_PIXEL_LIGHTING (@normalMap || @specularMap || @forcePPL)\n#endif") }
-    patch(base + "water.frag") { c -> c
-        .replace("#version 120", "#version 120\n#pragma import_defines(WRITE_NORMALS, CLASSIC_FALLOFF, MAX_LIGHTS)\n")
-        .replace("#if !@disableNormals", "#if defined(WRITE_NORMALS) && WRITE_NORMALS") }
-    patch(lib + "lighting.glsl") { c -> c
-        .replace("#if !@classicFalloff && !@lightingMethodFFP", "#if defined(CLASSIC_FALLOFF) && !CLASSIC_FALLOFF && !@lightingMethodFFP") }
-    patch(lib + "lighting_util.glsl") { c -> c
-        .replace("#define LIB_LIGHTING_UTIL", "#define LIB_LIGHTING_UTIL\n#pragma import_defines(CLAMP_LIGHTING)")
-        .replace("#if @clamp", "#if defined(CLAMP_LIGHTING) && CLAMP_LIGHTING")
-        .replace("uniform int PointLightIndex[@maxLights];", "#if defined(MAX_LIGHTS)\nuniform int PointLightIndex[MAX_LIGHTS];\n#else\nuniform int PointLightIndex[@maxLights];\n#endif")
-        .replace("uniform mat4 LightBuffer[@maxLights];", "#if defined(MAX_LIGHTS)\nuniform mat4 LightBuffer[MAX_LIGHTS];\n#else\nuniform mat4 LightBuffer[@maxLights];\n#endif")
-        .replace("#if !@classicFalloff && !@lightingMethodFFP", "#if defined(CLASSIC_FALLOFF) && !CLASSIC_FALLOFF && !@lightingMethodFFP") }
-}
-
 class GameActivity : SDLActivity() {
 
     private var prefs: SharedPreferences? = null
@@ -118,152 +68,98 @@ class GameActivity : SDLActivity() {
 
     override fun loadLibraries() {
         prefs = PreferenceManager.getDefaultSharedPreferences(this)
-
+        val graphicsLibrary = prefs!!.getString("pref_graphicsLibrary_v2", "")
         val physicsFPS = prefs!!.getString("pref_physicsFPS2", "")
-        if (!physicsFPS.isNullOrEmpty()) {
-            try { Os.setenv("OPENMW_PHYSICS_FPS", physicsFPS, true) }
-            catch (e: ErrnoException) { Log.e("OpenMW", "Failed setting OPENMW_PHYSICS_FPS") }
+        if (!physicsFPS!!.isEmpty()) {
+            try {
+                Os.setenv("OPENMW_PHYSICS_FPS", physicsFPS, true)
+                Os.setenv("OSG_TEXT_SHADER_TECHNIQUE", "NO_TEXT_SHADER", true)
+            } catch (e: ErrnoException) {
+                Log.e("OpenMW", "Failed setting environment variables.")
+                e.printStackTrace()
+            }
+
         }
 
         System.loadLibrary("c++_shared")
         System.loadLibrary("openal")
         System.loadLibrary("SDL2")
+        if (graphicsLibrary != "gles1") {
+            try {
+                Os.setenv("OPENMW_GLES_VERSION", "2", true)
+                Os.setenv("LIBGL_ES", "2", true)
+                Os.setenv("OSG_VERTEX_BUFFER_HINT", "VBO", true)
+                Os.setenv("LIBGL_FB", "1", true)
+                Os.setenv("LIBGL_USEVBO", "1", true)
+                Os.setenv("LIBGL_NOHIGHP", "1", true)
+            } catch (e: ErrnoException) {
+                Log.e("OpenMW", "Failed setting environment variables.")
+                e.printStackTrace()
+            }
 
-        // NG-GL4ES: GLES 3.2 mode
-        try {
-            Os.setenv("OPENMW_GLES_VERSION", "32", true)
-            Os.setenv("LIBGL_ES", "3", true)
-        } catch (e: ErrnoException) { Log.e("OpenMW", "Failed setting GLES vars") }
+        }
 
-        // NG-GL4ES performance flags
-        Os.setenv("OSG_VERTEX_BUFFER_HINT", "VBO", true)
-        Os.setenv("OSG_GL_TEXTURE_STORAGE", "OFF", true)
-        Os.setenv("OSG_TEXT_SHADER_TECHNIQUE", "ALL", true)
-        Os.setenv("LIBGL_SIMPLE_SHADERCONV", "1", true)
-        Os.setenv("LIBGL_INSTANCING", "1", true)
-        Os.setenv("LIBGL_DXTMIPMAP", "1", true)
-
-        // TES3MP-specific settings
         val omwDebugLevel = prefs!!.getString("pref_debug_level", "")
-        if (!omwDebugLevel.isNullOrEmpty()) Os.setenv("OPENMW_DEBUG_LEVEL", omwDebugLevel, true)
+        if (omwDebugLevel == "DEBUG") Os.setenv("OPENMW_DEBUG_LEVEL", "DEBUG", true)
+        if (omwDebugLevel == "VERBOSE") Os.setenv("OPENMW_DEBUG_LEVEL", "VERBOSE", true)
+        if (omwDebugLevel == "INFO") Os.setenv("OPENMW_DEBUG_LEVEL", "INFO", true)
+        if (omwDebugLevel == "WARNING") Os.setenv("OPENMW_DEBUG_LEVEL", "WARNING", true)
+        if (omwDebugLevel == "ERROR") Os.setenv("OPENMW_DEBUG_LEVEL", "ERROR", true)
 
         val omwMyGui = prefs!!.getString("pref_mygui", "")
         if (omwMyGui == "preset_01") Os.setenv("OPENMW_MYGUI", "preset_01", true)
 
         val omwWaterPreset = prefs!!.getString("pref_water_preset", "")
         if (omwWaterPreset == "1") {
-            Os.setenv("OPENMW_WATER_VERTEX", "water_vertex.glsl", true)
-            Os.setenv("OPENMW_WATER_FRAGMENT", "water_fragment.glsl", true)
-        } else {
-            Os.setenv("OPENMW_WATER_VERTEX", "water_vertex2.glsl", true)
-            Os.setenv("OPENMW_WATER_FRAGMENT", "water_fragment2.glsl", true)
-        }
+                Os.setenv("OPENMW_WATER_VERTEX", "water_vertex.glsl", true)
+                Os.setenv("OPENMW_WATER_FRAGMENT", "water_fragment.glsl", true)
+            } else {
+                Os.setenv("OPENMW_WATER_VERTEX", "water_vertex2.glsl", true)
+                Os.setenv("OPENMW_WATER_FRAGMENT", "water_fragment2.glsl", true)
+            }
 
         val omwVfsSl = prefs!!.getString("pref_vfs_selector", "")
         if (omwVfsSl == "1") Os.setenv("OPENMW_VFS_SELECTOR", "vfs", true)
         if (omwVfsSl == "2") Os.setenv("OPENMW_VFS_SELECTOR", "vfs2", true)
 
-        // User-defined env vars (space/newline separated KEY=VALUE pairs)
-        val envline = prefs!!.getString("envLine", "") ?: ""
-        if (envline.isNotEmpty()) {
-            envline.split(" ", "\n").forEach { token ->
-                val parts = token.split("=")
-                if (parts.size == 2) Os.setenv(parts[0], parts[1], true)
+        val envline: String = PreferenceManager.getDefaultSharedPreferences(this).getString("envLine", "").toString()
+        if (envline.length > 0) {
+            val envs: List<String> = envline.split(" ")
+            var i = 0
+
+            repeat(envs.count())
+            {
+                val env: List<String> = envs[i].split("=")
+                if (env.count() == 2) Os.setenv(env[0], env[1], true)
+                i = i + 1
             }
         }
 
-        patchShaders()
-
-        // Load NG-GL4ES (replaces legacy gl4es libGL.so)
-        System.loadLibrary("ng_gl4es")
+        System.loadLibrary("GL")
         System.loadLibrary("openmw")
     }
 
-    override fun getMainSharedObject(): String = "libopenmw.so"
-
-    private fun showProgressBar() {
-        val dm = DisplayMetrics()
-        windowManager.defaultDisplay.getRealMetrics(dm)
-
-        val bg = ImageView(layout.context).apply {
-            setImageResource(R.drawable.progressbarbackground)
-            scaleType = ImageView.ScaleType.FIT_XY
-            x = ((dm.widthPixels / 2) - 405).toFloat()
-            y = ((dm.heightPixels / 2) - 105).toFloat()
-        }
-        layout.addView(bg)
-        bg.layoutParams.width = 810; bg.layoutParams.height = 60
-
-        val bar = ImageView(layout.context).apply {
-            setImageResource(R.drawable.progressbar)
-            scaleType = ImageView.ScaleType.FIT_XY
-            x = ((dm.widthPixels / 2) - 400).toFloat()
-            y = ((dm.heightPixels / 2) - 100).toFloat()
-        }
-        layout.addView(bar)
-        bar.layoutParams.width = 0; bar.layoutParams.height = 50
-
-        val msg = "GENERATING NAVMESH CACHE"
-        val title = TextView(this).apply {
-            text = msg
-            val b = Rect(); paint.getTextBounds(msg, 0, msg.length, b)
-            x = ((dm.widthPixels / 2) - (b.width() / 2)).toFloat()
-            y = ((dm.heightPixels / 2) - 200).toFloat()
-            setTypeface(null, Typeface.BOLD)
-        }
-        layout.addView(title)
-
-        val pct = TextView(this).apply {
-            x = (dm.widthPixels / 2).toFloat()
-            y = ((dm.heightPixels / 2) + 50).toFloat()
-        }
-        layout.addView(pct)
-
-        Os.setenv("NAVMESHTOOL_MESSAGE", "0.0", true)
-        ProgressBarUpdater(pct, bar, dm.widthPixels, dm.heightPixels).execute()
-    }
-
-    class ProgressBarUpdater(
-        private val pct: TextView, private val bar: ImageView,
-        private val sw: Int, private val sh: Int
-    ) : AsyncTask<Void, String, String>() {
-        override fun doInBackground(vararg p: Void?): String {
-            while (Os.getenv("NAVMESHTOOL_MESSAGE") != "Done") {
-                publishProgress(Os.getenv("NAVMESHTOOL_MESSAGE")); Thread.sleep(50)
-            }
-            return "DONE"
-        }
-        override fun onProgressUpdate(vararg progress: String?) {
-            bar.requestLayout(); bar.layoutParams.width = (8.0 * progress[0]!!.toFloat()).toInt()
-            val b = Rect(); pct.paint.getTextBounds(progress[0]!!, 0, progress[0]!!.length, b)
-            pct.x = ((sw / 2) - (b.width() / 2)).toFloat(); pct.text = progress[0]
-        }
+    override fun getMainSharedObject(): String {
+        return "libopenmw.so"
     }
 
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        val cutout = PreferenceManager.getDefaultSharedPreferences(this)
-            .getBoolean("pref_display_cutout_area", true)
-        if (cutout || android.os.Build.VERSION.SDK_INT < 29)
-            window.attributes.layoutInDisplayCutoutMode =
-                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-
         KeepScreenOn()
         getPathToJni(filesDir.parent, Constants.USER_FILE_STORAGE)
-
-        if (Os.getenv("OPENMW_GENERATE_NAVMESH_CACHE") == "1") showProgressBar()
-        else showControls()
+        showControls()
     }
 
     private fun showControls() {
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
-        mouseMode = MouseMode.get(prefs.getString("pref_mouse_mode",
-            getString(R.string.pref_mouse_mode_default))!!)
+
+        mouseMode = MouseMode.get((prefs.getString("pref_mouse_mode",
+            getString(R.string.pref_mouse_mode_default))!!))
 
         val pref_hide_controls = prefs.getBoolean(Constants.HIDE_CONTROLS, false)
         var osc: Osc? = null
         if (!pref_hide_controls) {
+            val layout = layout
             osc = Osc()
             osc.placeElements(layout)
         }
@@ -271,21 +167,29 @@ class GameActivity : SDLActivity() {
     }
 
     private fun KeepScreenOn() {
-        if (PreferenceManager.getDefaultSharedPreferences(this).getBoolean("pref_screen_keeper", false))
+        val needKeepScreenOn = PreferenceManager.getDefaultSharedPreferences(this).getBoolean("pref_screen_keeper", false)
+        if (needKeepScreenOn) {
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
     }
 
     public override fun onDestroy() {
-        finish(); Process.killProcess(Process.myPid()); super.onDestroy()
+        finish()
+        Process.killProcess(Process.myPid())
+        super.onDestroy()
     }
 
+
     override fun onWindowFocusChanged(hasFocus: Boolean) {
-        if (hasFocus) hideAndroidControls(this)
+        if (hasFocus) {
+            hideAndroidControls(this)
+        }
     }
 
     override fun getArguments(): Array<String> {
         val cmd = PreferenceManager.getDefaultSharedPreferences(this).getString("commandLine", "")
-        return CommandlineParser("--resources " + Constants.USER_FILE_STORAGE + "/resources " + cmd!!).argv
+        val commandlineParser = CommandlineParser(cmd!!)
+        return commandlineParser.argv
     }
 
     private external fun getPathToJni(path_global: String, path_user: String)

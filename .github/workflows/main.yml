@@ -22,7 +22,7 @@ jobs:
         arch: [arm64]
 
     env:
-      CMAKE_VERSION: 3.19.7
+      CMAKE_VERSION: 3.18.4
       GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.jvmargs='-Xmx6g -Dfile.encoding=UTF-8'
 
     steps:
@@ -75,7 +75,7 @@ jobs:
           set -euxo pipefail
           cd buildscripts
           chmod +x ./*.sh ./include/*.sh || true
-          ./build.sh --arch "${{ matrix.arch }}" --gh_actions_build
+          ./build.sh --arch "${{ matrix.arch }}"
 
       - name: Build APK
         shell: bash
@@ -87,19 +87,37 @@ jobs:
           export ANDROID_NDK_HOME="$GITHUB_WORKSPACE/buildscripts/toolchain/ndk"
           ./gradlew --no-daemon assembleNightlyDebug
 
+      - name: Compress symbols
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cd buildscripts
+          ./package-symbols.sh
+          mv symbols.7z "../symbols-$(git rev-parse --short "$GITHUB_SHA")-${{ matrix.arch }}.7z"
+
       - name: Collect outputs
         id: outputs
         shell: bash
         run: |
           set -euxo pipefail
           APK_FILE="omw-debug-$(git rev-parse --short "$GITHUB_SHA")-${{ matrix.arch }}.apk"
+          SYMBOLS_FILE="symbols-$(git rev-parse --short "$GITHUB_SHA")-${{ matrix.arch }}.7z"
           mv app/build/outputs/apk/nightly/debug/omw_debug_*.apk "$APK_FILE"
           echo "apk_file=$APK_FILE" >> "$GITHUB_OUTPUT"
+          echo "symbols_file=$SYMBOLS_FILE" >> "$GITHUB_OUTPUT"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.outputs.outputs.apk_file }}
           path: ${{ steps.outputs.outputs.apk_file }}
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Upload debug symbols
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.outputs.outputs.symbols_file }}
+          path: ${{ steps.outputs.outputs.symbols_file }}
           retention-days: 14
           if-no-files-found: error
