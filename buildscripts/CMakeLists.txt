@@ -508,7 +508,10 @@ set(OPENMW_COMMON_ARGS
     -DBUILD_WIZARD=OFF
     -DBUILD_MYGUI_PLUGIN=OFF
     -DOPENGL_ES=ON
-    -DOPENMW_UNITY_BUILD=ON
+    # Unity build breaks TES3MP configure on Android/CMake here:
+    # generated sources use backslashes like ub_openmw-mp\Packets.cpp,
+    # which CMake parses as invalid escape sequences.
+    -DOPENMW_UNITY_BUILD=OFF
     -DOPENMW_LTO_BUILD=${ENABLE_LTO}
     $<$<BOOL:${ENABLE_VULKAN}>:-DOPENMW_USE_VULKAN=ON>
 )
