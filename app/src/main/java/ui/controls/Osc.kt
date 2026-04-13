@@ -330,8 +330,6 @@ enum class OscVisibility(val v: Int) {
 }
 
 class Osc {
-    private var osk = Osk()
-    var keyboardVisible = false //< Mode where only keyboard is visible
     var mouseVisible = false //< Mode where only mouse-switch icon is visible
     private var topVisible = true //< The controls located at the top hidden behind the hamburger toggle
     private var visibilityState = 0
@@ -447,8 +445,6 @@ class Osc {
             element.place(target)
             element.loadPrefs(target.context)
         }
-        osk.placeElements(target)
-
         target.addOnLayoutChangeListener { v, l, t, r, b, ol, ot, or, ob -> relayout(l, t, r, b, ol, ot, or, ob) }
 
         showBasedOnState()
@@ -463,10 +459,12 @@ class Osc {
     }
 
     fun toggleKeyboard() {
-        osk.toggle()
-
-        keyboardVisible = !keyboardVisible
+        SDLActivity.toggleScreenKeyboard()
         showBasedOnState()
+    }
+
+    fun isKeyboardVisible(): Boolean {
+        return SDLActivity.isScreenKeyboardShown()
     }
 
     private fun toggleTopControls() {
@@ -486,7 +484,7 @@ class Osc {
      */
     fun showBasedOnState() {
         // If keyboard or mouse-mode or both, then hide everything
-        if (keyboardVisible || mouseVisible) {
+        if (isKeyboardVisible() || mouseVisible) {
             setVisibility(OscVisibility.NULL.v)
         } else {
             if (SDLActivity.isMouseShown() == 0)

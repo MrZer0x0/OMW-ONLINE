@@ -32,6 +32,7 @@
             android:name="ui.activity.GameActivity"
             android:configChanges="keyboardHidden|orientation"
             android:screenOrientation="sensorLandscape"
+            android:windowSoftInputMode="adjustNothing|stateHidden"
             android:theme="@style/Theme.AppCompat.FullScreen" />
         <activity
             android:name="ui.activity.ConfigureControls"

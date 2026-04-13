@@ -70,6 +70,7 @@ class MouseCursor(activity: GameActivity, private val osc: Osc?) : Choreographer
     private val choreographer: Choreographer
     private val cursor: FixedSizeImageView
     private var prevMouseShown = -1
+    private var prevKeyboardShown = false
 
     init {
         val height = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 30f,
@@ -90,7 +91,8 @@ class MouseCursor(activity: GameActivity, private val osc: Osc?) : Choreographer
     override fun doFrame(frameTimeNanos: Long) {
         // Check if we need to switch osc widgets visibility
         val mouseShown = SDLActivity.isMouseShown()
-        if (osc != null && mouseShown != prevMouseShown) {
+        val keyboardShown = osc?.isKeyboardVisible() ?: false
+        if (osc != null && (mouseShown != prevMouseShown || keyboardShown != prevKeyboardShown)) {
             if (GameActivity.mouseMode == MouseMode.Touch) {
                 // If the player has default mouse-mode enabled, trigger it here
                 osc.mouseVisible = mouseShown != 0
@@ -98,7 +100,7 @@ class MouseCursor(activity: GameActivity, private val osc: Osc?) : Choreographer
             osc.showBasedOnState()
         }
 
-        if (GameActivity.mouseMode == MouseMode.Touch || mouseShown == 0 || (osc != null && osc.keyboardVisible)) {
+        if (GameActivity.mouseMode == MouseMode.Touch || mouseShown == 0 || keyboardShown) {
             cursor.visibility = View.GONE
         } else {
             cursor.visibility = View.VISIBLE
@@ -125,6 +127,7 @@ class MouseCursor(activity: GameActivity, private val osc: Osc?) : Choreographer
         }
 
         prevMouseShown = mouseShown
+        prevKeyboardShown = keyboardShown
         choreographer.postFrameCallback(this)
     }
 }

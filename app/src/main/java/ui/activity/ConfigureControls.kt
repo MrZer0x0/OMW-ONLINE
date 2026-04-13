@@ -88,6 +88,7 @@ class ConfigureControls : Activity() {
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
         if (hasFocus) {
             hideAndroidControls(this)
         }

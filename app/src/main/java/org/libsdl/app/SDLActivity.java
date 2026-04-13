@@ -269,9 +269,10 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
 
         setContentView(mLayout);
 
+        applyEdgeToEdge();
         setWindowStyle(false);
 
-//        getWindow().getDecorView().setOnSystemUiVisibilityChangeListener(this);
+        getWindow().getDecorView().setOnSystemUiVisibilityChangeListener(this);
 
         // Get filename from "Open with" of another application
         Intent intent = getIntent();
@@ -304,6 +305,31 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
         }
 
         SDLActivity.handleNativeState();
+    }
+
+    protected void applyEdgeToEdge() {
+        Window window = getWindow();
+        if (window == null) {
+            return;
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            WindowManager.LayoutParams attrs = window.getAttributes();
+            attrs.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+            window.setAttributes(attrs);
+        }
+
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING);
+
+        int flags = View.SYSTEM_UI_FLAG_FULLSCREEN |
+                    View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
+                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+                    View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.INVISIBLE;
+
+        window.getDecorView().setSystemUiVisibility(flags);
+        SDLActivity.mFullscreenModeActive = true;
     }
 
     // Events
@@ -389,6 +415,7 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
 
         mHasFocus = hasFocus;
         if (hasFocus) {
+           applyEdgeToEdge();
            mNextNativeState = NativeState.RESUMED;
            SDLActivity.getMotionListener().reclaimRelativeMouseModeIfNeeded();
 
@@ -1142,25 +1169,26 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
 
         @Override
         public void run() {
-//            RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(w, h + HEIGHT_PADDING);
-//            params.leftMargin = x;
-//            params.topMargin = y;
-//
-//            if (mTextEdit == null) {
-//                mTextEdit = new DummyEdit(SDL.getContext());
-//
-//                mLayout.addView(mTextEdit, params);
-//            } else {
-//                mTextEdit.setLayoutParams(params);
-//            }
-//
-//            mTextEdit.setVisibility(View.VISIBLE);
-//            mTextEdit.requestFocus();
-//
-//            InputMethodManager imm = (InputMethodManager) SDL.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-//            imm.showSoftInput(mTextEdit, 0);
-//
-//            mScreenKeyboardShown = true;
+            RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(w, h + HEIGHT_PADDING);
+            params.leftMargin = x;
+            params.topMargin = y;
+
+            if (mTextEdit == null) {
+                mTextEdit = new DummyEdit(SDL.getContext());
+                mLayout.addView(mTextEdit, params);
+            } else {
+                mTextEdit.setLayoutParams(params);
+            }
+
+            mTextEdit.setVisibility(View.VISIBLE);
+            mTextEdit.requestFocus();
+
+            InputMethodManager imm = (InputMethodManager) SDL.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.showSoftInput(mTextEdit, InputMethodManager.SHOW_IMPLICIT);
+            }
+
+            mScreenKeyboardShown = true;
         }
     }
 
@@ -1170,6 +1198,25 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
     public static boolean showTextInput(int x, int y, int w, int h) {
         // Transfer the task to the main thread as a Runnable
         return mSingleton.commandHandler.post(new ShowTextInputTask(x, y, w, h));
+    }
+
+    public static boolean hideTextInput() {
+        if (mSingleton == null) {
+            return false;
+        }
+        return mSingleton.sendCommand(COMMAND_TEXTEDIT_HIDE, 0);
+    }
+
+    public static boolean toggleScreenKeyboard() {
+        if (mSingleton == null) {
+            return false;
+        }
+
+        if (isScreenKeyboardShown()) {
+            return hideTextInput();
+        }
+
+        return showTextInput(0, 0, 1, 1);
     }
 
     public static boolean isTextInputEvent(KeyEvent event) {
