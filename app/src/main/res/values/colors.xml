@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Theme colors -->
+    <color name="colorPrimary">#FF5722</color>
+    <color name="colorPrimaryDark">#E64A19</color>
+    <color name="colorAccent">#FF9800</color>
+
+    <!-- Mod list item colors -->
+    <color name="modItemBackgroundColor">#282828</color>
+    <color name="modItemSelectedColor">#3D3D3D</color>
+</resources>
