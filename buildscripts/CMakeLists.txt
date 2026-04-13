@@ -541,7 +541,7 @@ ExternalProject_Add(tes3mp
         COMMAND patch -p1 --fuzz=3 -d <SOURCE_DIR> -i ${CMAKE_SOURCE_DIR}/patches/openmw/06-fix-build.patch
         COMMAND sh -c "patch -p1 --fuzz=3 -d <SOURCE_DIR> -i ${CMAKE_SOURCE_DIR}/patches/openmw/08-highp.patch || true"
         COMMAND sh -c "patch -p1 --fuzz=3 -d <SOURCE_DIR> -i ${CMAKE_SOURCE_DIR}/patches/openmw/09-fix-maskedoc-clang-version.patch || true"
-        COMMAND sh -c "sed -i 's/target_link_libraries(raknet pthread)/if(NOT ANDROID)\n    target_link_libraries(raknet pthread)\nendif()/' <SOURCE_DIR>/extern/raknet/lib/CMakeLists.txt || true"
+        COMMAND sh -c "sed -i '/target_link_libraries(raknet pthread)/d' <SOURCE_DIR>/extern/raknet/lib/CMakeLists.txt || true"
 
     CMAKE_ARGS
         ${COMMON_CMAKE_ARGS}
