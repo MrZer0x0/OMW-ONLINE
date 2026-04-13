@@ -1,0 +1,7 @@
+--- a/lib/CMakeLists.txt
++++ b/lib/CMakeLists.txt
+@@ -49,1 +49,3 @@
+-target_link_libraries(raknet pthread)
++if(NOT ANDROID)
++    target_link_libraries(raknet pthread)
++endif()
