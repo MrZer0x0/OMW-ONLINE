@@ -20,7 +20,7 @@
 package mods
 
 import android.database.sqlite.SQLiteDatabase
-import org.jetbrains.anko.db.*
+// Anko removed - using AnkoCompat.kt in same package
 
 enum class ModType(val v: Int) {
     Plugin(1),

@@ -21,7 +21,7 @@ package mods
 
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
-import org.jetbrains.anko.db.*
+// Anko removed - using AnkoCompat.kt in same package
 
 class ModsDatabaseOpenHelper private constructor(ctx: Context)
     : ManagedSQLiteOpenHelper(ctx, "ModsDatabase", null, 1) {

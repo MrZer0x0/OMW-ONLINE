@@ -30,7 +30,7 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.RelativeLayout
 import com.libopenmw.openmw.R
-import org.jetbrains.anko.defaultSharedPreferences
+import mods.defaultSharedPreferences
 import org.libsdl.app.SDLActivity
 import ui.activity.GameActivity
 import ui.activity.MouseMode
