@@ -498,7 +498,7 @@ set(OPENMW_COMMON_ARGS
     -DOPENAL_INCLUDE_DIR=${prefix}/include/AL/
     -DBullet_INCLUDE_DIR=${prefix}/include/bullet/
     -DBUILD_BROWSER=OFF
-	-DBUILD_OPENMW_MP=OFF 
+    -DBUILD_OPENMW_MP=OFF
     -DBUILD_BSATOOL=OFF
     -DBUILD_NIFTEST=OFF
     -DBUILD_ESMTOOL=OFF
@@ -540,6 +540,8 @@ ExternalProject_Add(tes3mp
         COMMAND sh -c "patch -p1 --fuzz=3 -d <SOURCE_DIR> -i ${CMAKE_SOURCE_DIR}/patches/openmw/05-components-misc-stringops-use-boost-format-instead-o.patch || true"
         COMMAND patch -p1 --fuzz=3 -d <SOURCE_DIR> -i ${CMAKE_SOURCE_DIR}/patches/openmw/06-fix-build.patch
         COMMAND sh -c "patch -p1 --fuzz=3 -d <SOURCE_DIR> -i ${CMAKE_SOURCE_DIR}/patches/openmw/08-highp.patch || true"
+        COMMAND sh -c "patch -p1 --fuzz=3 -d <SOURCE_DIR> -i ${CMAKE_SOURCE_DIR}/patches/openmw/09-fix-maskedoc-clang-version.patch || true"
+        COMMAND sh -c "sed -i 's/target_link_libraries(raknet pthread)/if(NOT ANDROID)\n    target_link_libraries(raknet pthread)\nendif()/' <SOURCE_DIR>/extern/raknet/lib/CMakeLists.txt || true"
 
     CMAKE_ARGS
         ${COMMON_CMAKE_ARGS}
