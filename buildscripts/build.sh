@@ -78,31 +78,50 @@ fi
 
 source ./include/version.sh
 
+append_flags() {
+	local var_name="$1"
+	shift
+	local current="${!var_name}"
+	local extra="$*"
+
+	if [ -n "$current" ]; then
+		printf -v "$var_name" '%s %s' "$current" "$extra"
+	else
+		printf -v "$var_name" '%s' "$extra"
+	fi
+}
+
 if [ $ASAN = true ]; then
-	CFLAGS="$CFLAGS -fsanitize=address -fuse-ld=gold -fno-omit-frame-pointer"
-	CXXFLAGS="$CXXFLAGS -fsanitize=address -fuse-ld=gold -fno-omit-frame-pointer"
-	LDFLAGS="$LDFLAGS -fsanitize=address -fuse-ld=gold -fno-omit-frame-pointer"
+	append_flags CFLAGS -fsanitize=address -fuse-ld=gold -fno-omit-frame-pointer
+	append_flags CXXFLAGS -fsanitize=address -fuse-ld=gold -fno-omit-frame-pointer
+	append_flags LDFLAGS -fsanitize=address -fuse-ld=gold -fno-omit-frame-pointer
 fi
 
 if [ $BUILD_TYPE = "release" ]; then
-	CFLAGS="$CFLAGS -O3"
-	CXXFLAGS="$CXXFLAGS -O3"
+	append_flags CFLAGS -O3
+	append_flags CXXFLAGS -O3
 else
-	CFLAGS="$CFLAGS -O0 -g"
-	CXXFLAGS="$CXXFLAGS -O0 -g"
+	append_flags CFLAGS -O0 -g
+	append_flags CXXFLAGS -O0 -g
 fi
 
 if [[ $LTO = "true" ]]; then
-	CFLAGS="$CFLAGS -flto"
-	CXXFLAGS="$CXXFLAGS -flto"
+	append_flags CFLAGS -flto
+	append_flags CXXFLAGS -flto
 	# emulated-tls should not be needed in ndk r18 https://github.com/android-ndk/ndk/issues/498#issuecomment-327825754
-	LDFLAGS="$LDFLAGS -flto -Wl,-plugin-opt=-emulated-tls -fuse-ld=gold"
+	append_flags LDFLAGS -flto -Wl,-plugin-opt=-emulated-tls -fuse-ld=gold
 fi
 
 if [[ $ARCH = "arm" ]]; then
-	CFLAGS="$CFLAGS -mthumb"
-	CXXFLAGS="$CXXFLAGS -mthumb"
+	append_flags CFLAGS -mthumb
+	append_flags CXXFLAGS -mthumb
 fi
+
+# Normalize whitespace so CMake/ndk-build do not see flags with leading spaces.
+CFLAGS="$(printf '%s' "$CFLAGS" | xargs)"
+CXXFLAGS="$(printf '%s' "$CXXFLAGS" | xargs)"
+LDFLAGS="$(printf '%s' "$LDFLAGS" | xargs)"
+export CFLAGS CXXFLAGS LDFLAGS
 
 echo ""
 echo "================================================================================"
@@ -221,9 +240,9 @@ echo "==> Making your debugging life easier"
 # copy unstripped libs to aid debugging
 rm -rf "./symbols/$ABI/" && mkdir -p "./symbols/$ABI/"
 cp "./build/$ARCH/openal-prefix/src/openal-build/libopenal.so" "./symbols/$ABI/"
-cp "./build/$ARCH/sdl2-prefix/src/sdl2-build/libSDL2.so" "./symbols/$ABI/"
-if [ -f "./build/$ARCH/sdl2-prefix/src/sdl2-build/libhidapi.so" ]; then
-	cp "./build/$ARCH/sdl2-prefix/src/sdl2-build/libhidapi.so" "./symbols/$ABI/"
+cp "./build/$ARCH/sdl2-prefix/src/sdl2-build/obj/local/$ABI/libSDL2.so" "./symbols/$ABI/"
+if [ -f "./build/$ARCH/sdl2-prefix/src/sdl2-build/obj/local/$ABI/libhidapi.so" ]; then
+	cp "./build/$ARCH/sdl2-prefix/src/sdl2-build/obj/local/$ABI/libhidapi.so" "./symbols/$ABI/"
 fi
 cp "./build/$ARCH/tes3mp-prefix/src/tes3mp-build/libtes3mp.so" "./symbols/$ABI/libtes3mp.so"
 cp "./build/$ARCH/gl4es-prefix/src/gl4es-build/obj/local/$ABI/libGL.so" "./symbols/$ABI/"

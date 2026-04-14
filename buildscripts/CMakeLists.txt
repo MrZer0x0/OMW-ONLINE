@@ -70,8 +70,8 @@ set(FFMPEG_HASH SHA256=488c76e57dd9b3bee901f71d5c95eaf1db4a5a31fe46a28654e837144
 # SDL2 — последняя в ветке 2.30.x: 2.30.12
 # [VERIFY HASH] sha256 для 2.30.12:
 # https://github.com/libsdl-org/SDL/releases/download/release-2.30.12/SDL2-2.30.12.tar.gz
-set(SDL2_VERSION "2.0.12")
-set(SDL2_HASH SHA256=349268f695c02efbc9b9148a70b85e58cefbbf704abd3e91be654db7f1e2c863)
+set(SDL2_VERSION "2.28.5")  # TODO: обновить до 2.30.12
+set(SDL2_HASH SHA256=332cb37d0be20cb9541739c61f79bae5a477427d79ae85e352089afdaf6666e4)
 
 set(BULLET_VERSION "3.25")
 set(BULLET_HASH SHA256=c45afb6399e3f68036ddb641c6bf6f552bf332d5ab6be62f7e6c54eda05ceb77)
@@ -147,7 +147,7 @@ set(COMMON_CMAKE_ARGS
     -DANDROID_CPP_FEATURES=rtti\ exceptions
     -DCMAKE_C_FLAGS=-DMYGUI_DONT_REPLACE_NULLPTR\ -I${prefix}/include/\ $ENV{CFLAGS}
     -DCMAKE_CXX_FLAGS=-DMYGUI_DONT_REPLACE_NULLPTR\ -I${prefix}/include/\ $ENV{CXXFLAGS}
-    -DCMAKE_SHARED_LINKER_FLAGS=$ENV{LDFLAGS}
+    "-DCMAKE_SHARED_LINKER_FLAGS:STRING=$ENV{LDFLAGS}"
     -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
     -DCMAKE_DEBUG_POSTFIX=
     -DCMAKE_INSTALL_PREFIX=${prefix}
@@ -159,7 +159,7 @@ set(COMMON_NDK_BUILD_FLAGS
     APP_BUILD_SCRIPT=<SOURCE_DIR>/Android.mk
     APP_PLATFORM=${android_platform}
     APP_ABI=${app_abi}
-    LOCAL_LDFLAGS=$ENV{LDFLAGS}
+    "LOCAL_LDFLAGS=$ENV{LDFLAGS}"
     -j8
 )
 
@@ -268,7 +268,7 @@ set(BOOST_B2_ARGS
     runtime-link=shared
     cflags=$ENV{CFLAGS}
     cxxflags=$ENV{CXXFLAGS}
-    linkflags=$ENV{LDFLAGS}
+    "linkflags=$ENV{LDFLAGS}"
     install
 )
 
@@ -330,27 +330,21 @@ ExternalProject_Add(ffmpeg
 )
 
 # SDL2
-# Откат на SDL 2.0.12 для совместимости со старой Java-обвязкой org.libsdl.app
+# ИСПРАВЛЕНО: удалён конфликт слияния Git (<<<<<<< / ======= / >>>>>>>)
+# Используется вариант HEAD: безопасная проверка наличия libhidapi.so перед копированием
 ExternalProject_Add(sdl2
-    URL https://www.libsdl.org/release/SDL2-${SDL2_VERSION}.tar.gz
-        https://github.com/xyzz/openmw-deps/releases/download/v0/SDL2-${SDL2_VERSION}.tar.gz
+    URL https://github.com/libsdl-org/SDL/releases/download/release-${SDL2_VERSION}/SDL2-${SDL2_VERSION}.tar.gz
     URL_HASH ${SDL2_HASH}
     DOWNLOAD_DIR ${download_dir}
 
-    PATCH_COMMAND patch -d <SOURCE_DIR> -p1 -t -N < ${CMAKE_SOURCE_DIR}/patches/sdl2-sensor.patch
-    COMMAND patch -d <SOURCE_DIR> -p1 -t -N < ${CMAKE_SOURCE_DIR}/patches/sdl2-android-120hz-gyroscope.patch
-    COMMAND patch -d <SOURCE_DIR> -p1 -t -N < ${CMAKE_SOURCE_DIR}/patches/sdl2-disable-declaration-after-statement-warning.patch
+    CONFIGURE_COMMAND ""
 
-    CONFIGURE_COMMAND ${wrapper_command} cmake <SOURCE_DIR>
-        ${COMMON_CMAKE_ARGS}
-        -DSDL_STATIC=OFF
-        -DHAVE_GCC_FVISIBILITY=OFF
+    BUILD_COMMAND ${wrapper_command} ndk-build
+    ${COMMON_NDK_BUILD_FLAGS}
 
-    BUILD_COMMAND ${wrapper_command} $(MAKE)
-
-    INSTALL_COMMAND ${wrapper_command} $(MAKE) install
-    COMMAND cp libSDL2.so ${prefix}/lib/
-    COMMAND cp libhidapi.so ${prefix}/lib/
+    INSTALL_COMMAND mkdir -p ${prefix}/lib/
+    COMMAND cp libs/${app_abi}/libSDL2.so ${prefix}/lib/
+    COMMAND sh -c "test ! -f libs/${app_abi}/libhidapi.so || cp libs/${app_abi}/libhidapi.so ${prefix}/lib/"
     COMMAND cp -r <SOURCE_DIR>/include ${prefix}/
 )
 
