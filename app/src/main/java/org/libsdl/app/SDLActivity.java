@@ -805,7 +805,7 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
     public static native void nativeResume();
     public static native void nativeFocusChanged(boolean hasFocus);
     public static native void onNativeDropFile(String filename);
-    public static native void nativeSetScreenResolution(int surfaceWidth, int surfaceHeight, int deviceWidth, int deviceHeight, float rate);
+    public static native void nativeSetScreenResolution(int surfaceWidth, int surfaceHeight, int deviceWidth, int deviceHeight, int format, float rate);
     public static native void onNativeResize();
     public static native void onNativeKeyDown(int keycode);
     public static native void onNativeKeyUp(int keycode);
@@ -821,13 +821,11 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
     public static native void onNativeSurfaceChanged();
     public static native void onNativeSurfaceDestroyed();
     public static native String nativeGetHint(String name);
-    public static native boolean nativeGetHintBoolean(String name, boolean default_value);
     public static native String nativeGetVersion();
     public static native void nativeSetenv(String name, String value);
     public static native void onNativeOrientationChanged(int orientation);
     public static native void nativeAddTouch(int touchId, String name);
     public static native void nativePermissionResult(int requestCode, boolean result);
-    public static native void onNativeLocaleChanged();
     public static native int getMouseX();
     public static native int getMouseY();
     public static native int isMouseShown();
@@ -1946,7 +1944,7 @@ class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
 
         Log.v("SDL", "Window size: " + width + "x" + height);
         Log.v("SDL", "Device size: " + nDeviceWidth + "x" + nDeviceHeight);
-        SDLActivity.nativeSetScreenResolution(width, height, nDeviceWidth, nDeviceHeight, mDisplay.getRefreshRate());
+        SDLActivity.nativeSetScreenResolution(width, height, nDeviceWidth, nDeviceHeight, sdlFormat, mDisplay.getRefreshRate());
         SDLActivity.onNativeResize();
 
         // Prevent a screen distortion glitch,

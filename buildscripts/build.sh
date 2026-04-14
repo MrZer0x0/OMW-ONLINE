@@ -221,9 +221,9 @@ echo "==> Making your debugging life easier"
 # copy unstripped libs to aid debugging
 rm -rf "./symbols/$ABI/" && mkdir -p "./symbols/$ABI/"
 cp "./build/$ARCH/openal-prefix/src/openal-build/libopenal.so" "./symbols/$ABI/"
-cp "./build/$ARCH/sdl2-prefix/src/sdl2-build/obj/local/$ABI/libSDL2.so" "./symbols/$ABI/"
-if [ -f "./build/$ARCH/sdl2-prefix/src/sdl2-build/obj/local/$ABI/libhidapi.so" ]; then
-	cp "./build/$ARCH/sdl2-prefix/src/sdl2-build/obj/local/$ABI/libhidapi.so" "./symbols/$ABI/"
+cp "./build/$ARCH/sdl2-prefix/src/sdl2-build/libSDL2.so" "./symbols/$ABI/"
+if [ -f "./build/$ARCH/sdl2-prefix/src/sdl2-build/libhidapi.so" ]; then
+	cp "./build/$ARCH/sdl2-prefix/src/sdl2-build/libhidapi.so" "./symbols/$ABI/"
 fi
 cp "./build/$ARCH/tes3mp-prefix/src/tes3mp-build/libtes3mp.so" "./symbols/$ABI/libtes3mp.so"
 cp "./build/$ARCH/gl4es-prefix/src/gl4es-build/obj/local/$ABI/libGL.so" "./symbols/$ABI/"
