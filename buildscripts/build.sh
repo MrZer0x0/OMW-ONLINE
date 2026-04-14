@@ -8,7 +8,7 @@ export ARCH="arm"
 export CCACHE="false"
 ASAN="false"
 DEPLOY_RESOURCES="true"
-LTO="true"
+LTO="false"
 BUILD_TYPE="release"
 CFLAGS="-fPIC"
 CXXFLAGS="-fPIC -frtti -fexceptions"
@@ -109,7 +109,7 @@ if [[ $LTO = "true" ]]; then
 	append_flags CFLAGS -flto
 	append_flags CXXFLAGS -flto
 	# emulated-tls should not be needed in ndk r18 https://github.com/android-ndk/ndk/issues/498#issuecomment-327825754
-	append_flags LDFLAGS -flto -Wl,-plugin-opt=-emulated-tls -fuse-ld=gold
+	append_flags LDFLAGS -flto -fuse-ld=gold
 fi
 
 if [[ $ARCH = "arm" ]]; then
