@@ -135,6 +135,8 @@ class GameActivity : SDLActivity() {
             }
         }
 
+        Os.setenv("OPENMW_USER_FILE_STORAGE", Constants.USER_FILE_STORAGE, true)
+
         System.loadLibrary("GL")
         System.loadLibrary("openmw")
     }
@@ -146,7 +148,6 @@ class GameActivity : SDLActivity() {
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         KeepScreenOn()
-        getPathToJni(filesDir.parent, Constants.USER_FILE_STORAGE)
         showControls()
     }
 
@@ -189,11 +190,9 @@ class GameActivity : SDLActivity() {
 
     override fun getArguments(): Array<String> {
         val cmd = PreferenceManager.getDefaultSharedPreferences(this).getString("commandLine", "")
-        val commandlineParser = CommandlineParser(cmd!!)
+        val commandlineParser = CommandlineParser("--resources " + Constants.USER_FILE_STORAGE + "/resources " + cmd!!)
         return commandlineParser.argv
     }
-
-    private external fun getPathToJni(path_global: String, path_user: String)
 
     companion object {
         var mouseMode = MouseMode.Hybrid
