@@ -28,12 +28,14 @@ import android.app.ProgressDialog
 import android.content.*
 import android.net.Uri
 import android.os.Bundle
+import android.os.Build.VERSION
 import android.preference.PreferenceManager
 import android.system.ErrnoException
 import android.system.Os
 import android.util.DisplayMetrics
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
@@ -61,7 +63,19 @@ import utils.MyApp
 import utils.Utils.hideAndroidControls
 import java.util.*
 
-@Suppress("DEPRECATION")
+import android.util.Base64
+
+import android.view.DisplayCutout
+import android.graphics.Rect
+
+import android.content.res.Configuration
+
+import android.os.Build
+import java.io.FileWriter
+import java.io.PrintWriter
+import java.text.SimpleDateFormat
+import kotlin.system.exitProcess
+
 class MainActivity : AppCompatActivity() {
     private lateinit var prefs: SharedPreferences
 
@@ -69,9 +83,16 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         MyApp.app.defaultScaling = determineScaling()
 
+        Thread.setDefaultUncaughtExceptionHandler(CaptureCrash())
+
         PermissionHelper.getWriteExternalStoragePermission(this@MainActivity)
         setContentView(R.layout.main)
         prefs = PreferenceManager.getDefaultSharedPreferences(this)
+
+        val theme = prefs.getInt(getString(R.string.theme), 2)
+        if(theme == 0) AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
+        else if(theme == 1) AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
+        else AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
 
         fragmentManager.beginTransaction()
             .replace(R.id.content_frame, FragmentSettings()).commit()
@@ -84,20 +105,29 @@ class MainActivity : AppCompatActivity() {
         if (prefs.getString("bugsnag_consent", "")!! == "") {
             askBugsnagConsent()
         }
+
+        // create user dirs
+        File(Constants.USER_CONFIG).mkdirs()
+        File(Constants.USER_FILE_STORAGE + "/launcher/icons").mkdirs()
+        if (!File(Constants.USER_OPENMW_CFG).exists())
+        File(Constants.USER_OPENMW_CFG).writeText("# This is the user openmw.cfg. Feel free to modify it as you wish.\n\nfallback=LightAttenuation_UseConstant,0\nfallback=LightAttenuation_ConstantValue,0.318\nfallback=LightAttenuation_UseLinear,0\nfallback=LightAttenuation_LinearMethod,1\nfallback=LightAttenuation_LinearValue,1.0\nfallback=LightAttenuation_LinearRadiusMult,1.0\nfallback=LightAttenuation_UseQuadratic,1\nfallback=LightAttenuation_QuadraticMethod,2\nfallback=LightAttenuation_QuadraticValue,13.5\nfallback=LightAttenuation_QuadraticRadiusMult,2.0\nfallback=LightAttenuation_OutQuadInLin,0")
+
+        // create icons files hint
+        if (!File(Constants.USER_FILE_STORAGE + "/launcher/icons/paste custom icons here.txt").exists())
+            File(Constants.USER_FILE_STORAGE + "/launcher/icons/paste custom icons here.txt").writeText(
+"attack.png \ninventory.png \njournal.png \njump.png \nkeyboard.png \nmouse.png \npause.png \npointer_arrow.png \nrun.png \nsave.png \nsneak.png \nthird_person.png \ntoggle_magic.png \ntoggle_weapon.png \ntoggle.png \nuse.png \nwait.png")
+
+        // create current mods dir in case someone deleted it
+        val modsDir = PreferenceManager.getDefaultSharedPreferences(this).getString("mods_dir", "")!!
+        if (modsDir != "" ) File(modsDir).mkdirs()
     }
 
-    /**
-     * Set new user consent and maybe restart the app
-     * @param consent New value of bugsnag consent
-     */
     @SuppressLint("ApplySharedPref")
     private fun setBugsnagConsent(consent: String) {
         val currentConsent = prefs.getString("bugsnag_consent", "")!!
         if (currentConsent == consent)
             return
 
-        // We only need to force a restart if the user revokes their consent
-        // If user grants consent, crashes won't be reported for 1 game session, but that's alright
         val needRestart = currentConsent == "true" && consent == "false"
 
         with (prefs.edit()) {
@@ -115,10 +145,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Opens the url in a web browser and gracefully handles the failure
-     * @param url Url to open
-     */
     fun openUrl(url: String) {
         try {
             val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
@@ -132,37 +158,26 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Asks the user if they want to automatically report crashes
-     */
     private fun askBugsnagConsent() {
-        // Do nothing for builds without api-key
         if (!MyApp.haveBugsnagApiKey)
             return
 
         val dialog = AlertDialog.Builder(this)
             .setTitle(R.string.bugsnag_consent_title)
             .setMessage(R.string.bugsnag_consent_message)
-            .setNeutralButton(R.string.bugsnag_policy) { _, _ -> /* set up below */ }
+            .setNeutralButton(R.string.bugsnag_policy) { _, _ -> }
             .setNegativeButton(R.string.bugsnag_no) { _, _ -> setBugsnagConsent("false") }
             .setPositiveButton(R.string.bugsnag_yes) { _, _ -> setBugsnagConsent("true") }
             .create()
 
         dialog.show()
 
-        // don't close the dialog when the privacy-policy button is clicked
         dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
             openUrl("https://omw.xyz.is/privacy-policy.html")
         }
     }
 
-    /**
-     * Checks that the game is properly installed and if so, starts the game
-     * - the game files must be selected
-     * - there must be at least 1 activated mod (user can ignore this warning)
-     */
     private fun checkStartGame() {
-        // First, check that there are game files present
         val inst = GameInstaller(prefs.getString("game_files", "")!!)
         if (!inst.check()) {
             AlertDialog.Builder(this)
@@ -176,16 +191,27 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        // Second, check if user has at least one mod enabled
-        val plugins = ModsCollection(ModType.Plugin, inst.findDataFiles(),
+        var dataFilesList = ArrayList<String>()
+        dataFilesList.add(inst.findDataFiles())
+
+        val modsDir = PreferenceManager.getDefaultSharedPreferences(this)
+            .getString("mods_dir", "")!!
+
+        File(Constants.USER_FILE_STORAGE + "/launcher/ModsDatabases" + modsDir).mkdirs()
+
+        File(modsDir).listFiles()?.forEach {
+            if (!it.isFile())
+                dataFilesList.add(modsDir + it.getName())
+        }
+
+        val plugins = ModsCollection(ModType.Plugin, dataFilesList,
             ModsDatabaseOpenHelper.getInstance(this))
         if (plugins.mods.count { it.enabled } == 0) {
-            // No mods enabled, show a warning
             AlertDialog.Builder(this)
                 .setTitle(R.string.no_content_files_title)
                 .setMessage(R.string.no_content_files_message)
                 .setNeutralButton(R.string.dialog_howto) { _, _ ->
-                    openUrl("https://omw.xyz.is/mods.html")
+                    openUrl("https://t.me/morrowind24")
                 }
                 .setNegativeButton(R.string.no_content_files_dismiss) { _, _ -> startGame() }
                 .setPositiveButton(R.string.configure_mods) { _, _ ->
@@ -196,7 +222,6 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        // If everything's alright, start the game
         startGame()
     }
 
@@ -209,7 +234,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun logConfig() {
-
     }
 
     private fun runGame() {
@@ -221,13 +245,7 @@ class MainActivity : AppCompatActivity() {
         this@MainActivity.startActivityForResult(intent, 1)
     }
 
-
-    /**
-     * Set up fixed screen resolution
-     * This doesn't do anything unless the user chose to override screen resolution
-     */
     private fun obtainFixedScreenResolution() {
-        // Split resolution e.g 640x480 to width/height
         val customResolution = prefs.getString("pref_customResolution", "")
         val sep = customResolution!!.indexOf("x")
         if (sep > 0) {
@@ -238,124 +256,110 @@ class MainActivity : AppCompatActivity() {
                 resolutionX = x
                 resolutionY = y
             } catch (e: NumberFormatException) {
-                // user entered resolution wrong, just ignore it
             }
         }
     }
 
-    /**
-     * Generates openmw.cfg using values from openmw.base.cfg combined with mod manager settings
-     */
     private fun generateOpenmwCfg() {
-        // contents of openmw.base.cfg
         val base: String
-        // contents of openmw.fallback.cfg
         val fallback: String
 
-        // try to read the files
         try {
             base = File(Constants.OPENMW_BASE_CFG).readText()
-            // TODO: support user custom options
             fallback = File(Constants.OPENMW_FALLBACK_CFG).readText()
         } catch (e: IOException) {
             Log.e(TAG, "Failed to read openmw.base.cfg or openmw.fallback.cfg", e)
             return
         }
 
-        val dataFiles = GameInstaller.getDataFiles(this)
+        val modsDir = PreferenceManager.getDefaultSharedPreferences(this)
+            .getString("mods_dir", "")!!
+
         val db = ModsDatabaseOpenHelper.getInstance(this)
-        val resources = ModsCollection(ModType.Resource, dataFiles, db)
-        val plugins = ModsCollection(ModType.Plugin, dataFiles, db)
-        val groundcovers = ModsCollection(ModType.Groundcover, dataFiles, db)
+
+        var dataFilesList = ArrayList<String>()
+        var dataDirsPath = ArrayList<String>()
+        dataFilesList.add(GameInstaller.getDataFiles(this))
+        dataDirsPath.add(modsDir)
+
+        File(modsDir).listFiles()?.forEach {
+            if (!it.isFile())
+                dataFilesList.add(modsDir + it.getName())
+        }
+
+        val resources = ModsCollection(ModType.Resource, dataFilesList, db)
+        val dirs = ModsCollection(ModType.Dir, dataDirsPath, db)
+        val plugins = ModsCollection(ModType.Plugin, dataFilesList, db)
+        val groundcovers = ModsCollection(ModType.Groundcover, dataFilesList, db)
 
         try {
-            // generate final output.cfg
             var output = base + "\n" + fallback + "\n"
 
-            // output resources
             resources.mods
                 .filter { it.enabled }
                 .forEach { output += "fallback-archive=${it.filename}\n" }
 
-            // output plugins
+            dirs.mods
+                .filter { it.enabled }
+                .forEach { output += "data=" + '"' + modsDir + it.filename + '"' + "\n" }
+
             plugins.mods
                 .filter { it.enabled }
                 .forEach { output += "content=${it.filename}\n" }
 
-            // output groundcover
             groundcovers.mods
                 .filter { it.enabled }
                 .forEach { output += "groundcover=${it.filename}\n" }
 
-            // write everything to openmw.cfg
+            output += "data=" + '"' + Constants.USER_FILE_STORAGE + "launcher/delta" + '"' + "\n"
+
             File(Constants.OPENMW_CFG).writeText(output)
         } catch (e: IOException) {
             Log.e(TAG, "Failed to generate openmw.cfg.", e)
         }
     }
 
-    /**
-     * Determines required screen scaling based on resolution and physical size of the device
-     */
     private fun determineScaling(): Float {
-        // The idea is to stretch an old-school 1024x768 monitor to the device screen
-        // Assume that 1x scaling corresponds to resolution of 1024x768
-        // Assume that the longest side of the device corresponds to the 1024 side
-        // Therefore scaling is calculated as longest size of the device divided by 1024
-        // Note that it doesn't take into account DPI at all. Which is fine for now, but in future
-        // we might want to add some bonus scaling to e.g. phone devices so that it's easier
-        // to click things.
-
         val dm = DisplayMetrics()
         windowManager.defaultDisplay.getMetrics(dm)
         return maxOf(dm.heightPixels, dm.widthPixels) / 1024.0f
     }
 
-    /**
-     * Removes old and creates new files located in private application directories
-     * (i.e. under getFilesDir(), or /data/data/.../files)
-     */
     private fun reinstallStaticFiles() {
-        // we store global "config" and "resources" under private files
-
-        // wipe old version first
         removeStaticFiles()
 
-        // copy in the new version
         val assetCopier = CopyFilesFromAssets(this)
         assetCopier.copy("libopenmw/resources", Constants.RESOURCES)
         assetCopier.copy("libopenmw/openmw", Constants.GLOBAL_CONFIG)
 
-        // set up user config (if not present)
-        File(Constants.USER_CONFIG).mkdirs()
-        if (!File(Constants.USER_OPENMW_CFG).exists())
-            File(Constants.USER_OPENMW_CFG).writeText("# This is the user openmw.cfg. Feel free to modify it as you wish.\n")
-
-        // set version stamp
-        File(Constants.VERSION_STAMP).writeText(BuildConfig.VERSION_CODE.toString())
+        File(Constants.VERSION_STAMP).writeText(BuildConfig.RANDOMIZER.toString())
     }
 
-    /**
-     * Removes global static files, these include resources and config
-     */
     private fun removeStaticFiles() {
-        // remove version stamp so that reinstallStaticFiles is called during game launch
         File(Constants.VERSION_STAMP).delete()
-
         deleteRecursive(File(Constants.GLOBAL_CONFIG))
         deleteRecursive(File(Constants.RESOURCES))
     }
 
-    /**
-     * Resets user config to default values by removing it
-     */
     private fun removeUserConfig() {
         deleteRecursive(File(Constants.USER_CONFIG))
+        File(Constants.USER_CONFIG).mkdirs()
+        File(Constants.USER_OPENMW_CFG).writeText("# This is the user openmw.cfg. Feel free to modify it as you wish.\n")
+    }
+
+    private fun removeResourceFiles() {
+        reinstallStaticFiles()
+        deleteRecursive(File(Constants.USER_FILE_STORAGE + "/resources/"))
+
+        var src = File(Constants.RESOURCES)
+        var dst = File(Constants.USER_FILE_STORAGE + "/resources/")
+        dst.mkdirs()
+        src.copyRecursively(dst, true)
     }
 
     private fun configureDefaultsBin(args: Map<String, String>) {
         val defaults = File(Constants.DEFAULTS_BIN).readText()
-        val decoded = String(Base64.getDecoder().decode(defaults))
+        val decoded = String(android.util.Base64.decode(defaults, android.util.Base64.DEFAULT))
         val lines = decoded.lines().map {
             for ((k, v) in args) {
                 if (it.startsWith("$k ="))
@@ -364,13 +368,105 @@ class MainActivity : AppCompatActivity() {
             it
         }
         val data = lines.joinToString("\n")
-        val encoded = Base64.getEncoder().encodeToString(data.toByteArray())
+
+        val encoded = android.util.Base64.encodeToString(data.toByteArray(), android.util.Base64.NO_WRAP)
         File(Constants.DEFAULTS_BIN).writeText(encoded)
     }
 
-    private fun startGame() {
-//***********************************************************************************************************************************************************
+    private fun writeSetting(category: String, name: String, value: String) {
+        var lineList = mutableListOf<String>()
+        var lineNumber = 0
+        var categoryFound = 0
+        var categoryLine = 0
+        var nameFound = 0
+        var nameLine = 0
+        var currentCategory = ""
 
+        File(Constants.USER_CONFIG + "/settings.cfg").useLines {
+            lines -> lines.forEach {
+                lineList.add(it)
+                if (it.contains("[") && it.contains("]")) currentCategory = it.replace("[", "").replace("]", "").replace(" ", "")
+                if (currentCategory == category.replace(" ", "") && categoryFound == 0 ) { categoryLine = lineNumber; categoryFound = 1 }
+                if (currentCategory == category.replace(" ", "") && it.substringBefore("=").replace(" ", "") == name.replace(" ", ""))
+                    { nameLine = lineNumber; nameFound = 1 }
+
+                lineNumber++
+            }
+        }
+
+        if(nameFound == 1)
+            lineList.set(nameLine, name + " = " + value)
+        if(categoryFound == 1 && nameFound == 0)
+            lineList.add(categoryLine + 1, name + " = " + value)
+        if(categoryFound == 0 && nameFound == 0)
+            lineList.add(lineNumber, "\n" + "[" + category + "]" + "\n" + name + " = " + value)
+
+        var output = ""
+        lineList.forEach { output += it + "\n" }
+
+        File(Constants.USER_CONFIG + "/settings.cfg").writeText(output)
+    }
+
+
+    private fun writeUserSettings() {
+        File(Constants.USER_CONFIG + "/settings.cfg").createNewFile()
+
+        val displayInCutoutArea = PreferenceManager.getDefaultSharedPreferences(this).getBoolean("pref_display_cutout_area", true)
+        val dm = DisplayMetrics()
+        windowManager.defaultDisplay.getRealMetrics(dm)
+        val orientation = this.getResources().getConfiguration().orientation
+        var displayWidth = 0
+        var displayHeight = 0
+        val cutout = if (android.os.Build.VERSION.SDK_INT < 29) null else windowManager.defaultDisplay.getCutout()
+
+        if (cutout != null) {
+            if (orientation == Configuration.ORIENTATION_PORTRAIT) {
+                displayWidth = if(resolutionX == 0) dm.heightPixels else resolutionX
+                displayHeight = if(resolutionY == 0) dm.widthPixels else resolutionY
+                if( displayInCutoutArea == false && resolutionX == 0) {
+                    val cutoutRectTop = cutout.getBoundingRectTop()
+                    val cutoutRectBottom = cutout.getBoundingRectBottom()
+                    displayWidth = dm.heightPixels - maxOf(cutoutRectTop.bottom, cutoutRectBottom.bottom - cutoutRectBottom.top)
+                }
+            } else {
+                displayWidth = if(resolutionX == 0) dm.widthPixels else resolutionX
+                displayHeight = if(resolutionY == 0) dm.heightPixels else resolutionY
+                if( displayInCutoutArea == false && resolutionY == 0) {
+                    val cutoutRectLeft = cutout.getBoundingRectLeft()
+                    val cutoutRectRight = cutout.getBoundingRectRight()
+                    displayWidth = dm.widthPixels - maxOf(cutoutRectLeft.right, cutoutRectRight.right - cutoutRectRight.left)
+                }
+            }
+
+            writeSetting("Video", "resolution x", displayWidth.toString())
+            writeSetting("Video", "resolution y", displayHeight.toString())
+        } else {
+            if (resolutionX != 0 && resolutionY != 0) {
+                writeSetting("Video", "resolution x", displayWidth.toString())
+                writeSetting("Video", "resolution y", displayHeight.toString())
+            } else {
+                if (orientation == Configuration.ORIENTATION_PORTRAIT) {
+                    writeSetting("Video", "resolution x", dm.heightPixels.toString())
+                    writeSetting("Video", "resolution y", dm.widthPixels.toString())
+                } else {
+                    writeSetting("Video", "resolution x", dm.widthPixels.toString())
+                    writeSetting("Video", "resolution y", dm.heightPixels.toString())
+                }
+            }
+        }
+        writeSetting("Shadows", "enable shadows", if(prefs.getBoolean("shadows_key", false)) "true" else "false")
+        writeSetting("Shadows", "object shadows", if(prefs.getBoolean("shadowso_key", false)) "true" else "false")
+        writeSetting("Input", "enable gyroscope", if(prefs.getBoolean("gyroscope_key", false)) "true" else "false")
+        writeSetting("Cells", "preload doors", if(prefs.getBoolean("preload_key", false)) "true" else "false")
+        writeSetting("Terrain", "distant terrain", if(prefs.getBoolean("terrain_key", false)) "true" else "false")
+        writeSetting("Shaders", "auto use object normal maps", if(prefs.getBoolean("on_key", false)) "true" else "false")
+        writeSetting("Shaders", "auto use terrain normal maps", if(prefs.getBoolean("tn_key", false)) "true" else "false")
+        writeSetting("Shaders", "auto use object specular maps", if(prefs.getBoolean("os_key", false)) "true" else "false")
+        writeSetting("Shaders", "auto use terrain specular", if(prefs.getBoolean("ts_key", false)) "true" else "false")
+        writeSetting("Shaders", "soft particles", if(prefs.getBoolean("sp_key", false)) "true" else "false")
+    }
+
+    private fun startGame() {
         var scaling = 0f
 
         try {
@@ -381,179 +477,142 @@ class MainActivity : AppCompatActivity() {
                 apply()
             }
         }
-        // set up gamma, if invalid, use the default (1.0)
-        var gamma = 1.0f
-        try {
-            gamma = prefs.getString("pref_gamma", "")!!.toFloat()
-        } catch (e: NumberFormatException) {
-            // Reset the invalid setting
-            with(prefs.edit()) {
-                putString("pref_gamma", "")
-                apply()
-            }
-        }
 
-        try {
-            Os.setenv("OPENMW_GAMMA", "%.2f".format(Locale.ROOT, gamma), true)
-        } catch (e: ErrnoException) {
-            // can't really do much if that fails...
-        }
-
-        // If scaling didn't get set, determine it automatically
         if (scaling == 0f) {
             scaling = MyApp.app.defaultScaling
         }
 
         val dialog = ProgressDialog.show(
-            this, "", "Preparing for launch...", true)
+            this, "", "Запуск OpenMW Mobile...", true)
 
         val activity = this
 
-        // hide the controls so that ScreenResolutionHelper can get the right resolution
         hideAndroidControls(this)
 
         val th = Thread {
             try {
-                // Only reinstall static files if they are of a mismatched version
                 try {
                     val stamp = File(Constants.VERSION_STAMP).readText().trim()
-                    if (stamp.toInt() != BuildConfig.VERSION_CODE) {
-                        reinstallStaticFiles()
+                    if (stamp.toInt() != BuildConfig.RANDOMIZER) {
+                        removeResourceFiles()
                     }
                 } catch (e: Exception) {
-                    reinstallStaticFiles()
+                    removeResourceFiles()
                 }
 
                 val inst = GameInstaller(prefs.getString("game_files", "")!!)
 
-                // Regenerate the fallback file in case user edits their Morrowind.ini
                 inst.convertIni(prefs.getString("pref_encoding", GameInstaller.DEFAULT_CHARSET_PREF)!!)
 
                 generateOpenmwCfg()
 
-                // openmw.cfg: data, resources
                 file.Writer.write(Constants.OPENMW_CFG, "resources", Constants.RESOURCES)
                 file.Writer.write(Constants.OPENMW_CFG, "data", "\"" + inst.findDataFiles() + "\"")
 
                 file.Writer.write(Constants.OPENMW_CFG, "encoding", prefs!!.getString("pref_encoding", GameInstaller.DEFAULT_CHARSET_PREF)!!)
 
-                var settingsFile = File(Constants.USER_CONFIG + "/settings.cfg")
-                var settingsFolder = File(Constants.USER_CONFIG)
-                settingsFolder.mkdirs()
+                var src = File(Constants.RESOURCES)
+                var dst = File(Constants.USER_FILE_STORAGE + "/resources/")
+                val resourcesDirCreated :Boolean = dst.mkdirs()
 
-                val settingsFileCreated :Boolean = settingsFile.createNewFile()
-                if(settingsFileCreated)
-                    settingsFile.writeText(File(filesDir, "config/settings.cfg").readText())
+                if(resourcesDirCreated)
+                    src.copyRecursively(dst, false)
 
-                val enabler = prefs.getBoolean("pref_global_functions", false)
-                if (enabler) {
-
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "scaling factor", "%.2f".format(Locale.ROOT, scaling))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "viewing distance", prefs.getString("pref_viewing_distance", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "framerate limit", prefs.getString("pref_framerate_limit", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "antialiasing", prefs.getString("pref_antialiasing", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "async num threads", prefs.getString("pref_async", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "show owned", prefs.getString("pref_show_owned", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "strength influences hand to hand", prefs.getString("pref_strength_influences_hand_to_hand", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "projectiles enchant multiplier", prefs.getString("pref_projectiles_enchant_multiplier", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "rtt size", prefs.getString("pref_rtt_size", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "reflection detail", prefs.getString("pref_reflection_detail", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "lod factor", prefs.getString("pref_lod_factor", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "difficulty", prefs.getString("pref_difficulty", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "target framerate", prefs.getString("pref_target_framerate", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "small feature culling pixel size", prefs.getString("pref_small_feature_culling_pixel_size", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "max quicksaves", prefs.getString("pref_max_quicksaves", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "preload num threads", prefs.getString("pref_preload_num_threads", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "density", prefs.getString("pref_density", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "min chunk size", prefs.getString("pref_min_chunk_size", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "stomp mode", prefs.getString("pref_stomp_mode", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "stomp intensity", prefs.getString("pref_stomp_intensity", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "object paging min size", prefs.getString("pref_object_paging_min_size", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "lighting method", prefs.getString("pref_lighting_method", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "max lights", prefs.getString("pref_max_lights", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "minimum interior brightness", prefs.getString("pref_minimum_interior_brightness", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "preload distance", prefs.getString("pref_preload_distance", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "object paging merge factor", prefs.getString("pref_object_paging_merge_factor", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "rendering distance", prefs.getString("pref_rendering_distance", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "vertex lod mod", prefs.getString("pref_vertex_lod_mod", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "composite map level", prefs.getString("pref_composite_map_level", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "color topic specific", prefs.getString("pref_color_topic_specific", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "color topic exhausted", prefs.getString("pref_color_topic_exhausted", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "async nav mesh updater threads", prefs.getString("pref_async_nav_mesh_updater_threads", "true")!!)
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "font size", prefs.getString("pref_font_size", "true")!!)
-
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "vsync", (if (prefs.getBoolean("pref_vsync", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "preload enabled", (if (prefs.getBoolean("pref_preloading", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "distant terrain", (if (prefs.getBoolean("pref_distant", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "force shaders", (if (prefs.getBoolean("pref_shaders", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "force per pixel lighting", (if (prefs.getBoolean("pref_pix_light", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "clamp lighting", (if (prefs.getBoolean("pref_clamp_lighting", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "radial fog", (if (prefs.getBoolean("pref_radfog", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "enable gyroscope", (if (prefs.getBoolean("pref_gyroscope", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "stretch menu background", (if (prefs.getBoolean("pref_stretch_menu_background", false)) "true" else "false"))     
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "color topic enable", (if (prefs.getBoolean("pref_color_topic_enable", false)) "true" else "false"))     
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "show projectile damage", (if (prefs.getBoolean("pref_show_projectile_damage", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "show melee info", (if (prefs.getBoolean("pref_show_melee_info", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "show enchant chance", (if (prefs.getBoolean("pref_show_enchant_chance", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "best attack", (if (prefs.getBoolean("pref_best_attack", false)) "true" else "false"))     
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "classic reflected absorb spells behavior", (if (prefs.getBoolean("pref_classic_reflected_absorb_spells_behavior", false)) "true" else "false"))   
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "show effect duration", (if (prefs.getBoolean("pref_show_effect_duration", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "prevent merchant equipping", (if (prefs.getBoolean("pref_prevent_merchant_equipping", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "enchanted weapons are magical", (if (prefs.getBoolean("pref_enchanted_weapons_are_magical", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "followers attack on sight", (if (prefs.getBoolean("pref_followers_attack_on_sight", false)) "true" else "false"))     
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "can loot during death animation", (if (prefs.getBoolean("pref_can_loot_during_death_animation", false)) "true" else "false")) 
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "rebalance soul gem values", (if (prefs.getBoolean("pref_rebalance_soul_gem_values", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "use additional anim sources", (if (prefs.getBoolean("pref_use_additional_anim_sources", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "barter disposition change is permanent", (if (prefs.getBoolean("pref_barter_disposition_change_is_permanent", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "weapon sheathing", (if (prefs.getBoolean("pref_weapon_sheathing", false)) "true" else "false"))     
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "shield sheathing", (if (prefs.getBoolean("pref_shield_sheathing", false)) "true" else "false")) 
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "only appropriate ammunition bypasses resistance", (if (prefs.getBoolean("pref_only_appropriate_ammunition_bypasses_resistance", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "use magic item animations", (if (prefs.getBoolean("pref_use_magic_item_animations", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "normalise race speed", (if (prefs.getBoolean("pref_normalise_race_speed", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "uncapped damage fatigue", (if (prefs.getBoolean("pref_uncapped_damage_fatigue", false)) "true" else "false"))     
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "turn to movement direction", (if (prefs.getBoolean("pref_turn_to_movement_direction", false)) "true" else "false")) 
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "smooth movement", (if (prefs.getBoolean("pref_smooth_movement", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "NPCs avoid collisions", (if (prefs.getBoolean("pref_NPCs_avoid_collisions", false)) "true" else "false"))     
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "NPCs give way", (if (prefs.getBoolean("pref_NPCs_give_way", false)) "true" else "false")) 
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "swim upward correction", (if (prefs.getBoolean("pref_swim_upward_correction", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "trainers training skills based on base skill", (if (prefs.getBoolean("pref_trainers_training_skills_based_on_base_skill", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "always allow stealing from knocked out actors", (if (prefs.getBoolean("pref_always_allow_stealing_from_knocked_out_actors", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "graphic herbalism", (if (prefs.getBoolean("pref_graphic_herbalism", false)) "true" else "false"))     
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "allow actors to follow over water surface", (if (prefs.getBoolean("pref_allow_actors_to_follow_over_water_surface", false)) "true" else "false")) 
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "shader", (if (prefs.getBoolean("pref_shader_water", false)) "true" else "false"))     
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "refraction", (if (prefs.getBoolean("pref_refraction", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "head bobbing", (if (prefs.getBoolean("pref_head_bobbing", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "view over shoulder", (if (prefs.getBoolean("pref_view_over_shoulder", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "auto switch shoulder", (if (prefs.getBoolean("pref_auto_switch_shoulder", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "preview if stand still", (if (prefs.getBoolean("pref_preview_if_stand_still", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "deferred preview rotation", (if (prefs.getBoolean("pref_deferred_preview_rotation", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "subtitles", (if (prefs.getBoolean("pref_subtitles", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "toggle sneak", (if (prefs.getBoolean("pref_toggle_sneak", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "small feature culling", (if (prefs.getBoolean("pref_small_feature_culling", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "auto use object normal maps", (if (prefs.getBoolean("pref_auto_use_pbr", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "auto use object specular maps", (if (prefs.getBoolean("pref_auto_use_pbr", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "auto use terrain normal maps", (if (prefs.getBoolean("pref_auto_use_pbr", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "auto use terrain specular maps", (if (prefs.getBoolean("pref_auto_use_pbr", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "apply lighting to environment maps", (if (prefs.getBoolean("pref_apply_lighting_to_environment_maps", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "autosave", (if (prefs.getBoolean("pref_autosave", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "timeplayed", (if (prefs.getBoolean("pref_timeplayed", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "enabled", (if (prefs.getBoolean("pref_groundcover_enable", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "preload exterior grid", (if (prefs.getBoolean("pref_preload_exterior_grid", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "preload fast travel", (if (prefs.getBoolean("pref_preload_fast_travel", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "preload doors", (if (prefs.getBoolean("pref_preload_doors", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "preload instances", (if (prefs.getBoolean("pref_preload_instances", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "object paging", (if (prefs.getBoolean("pref_object_paging", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "always run", (if (prefs.getBoolean("pref_always_run", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "load unsupported nif files", (if (prefs.getBoolean("pref_load_unsupported_nif_files", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "occlusion culling", (if (prefs.getBoolean("pref_occlusion_culling", false)) "true" else "false"))
-                file.Writer.write(Constants.USER_CONFIG + "/settings.cfg", "reflection occlusion culling", (if (prefs.getBoolean("pref_reflection_occlusion_culling", false)) "true" else "false"))
-                }
-
+                obtainFixedScreenResolution()
 
                 configureDefaultsBin(mapOf(
-
-                        "camera sensitivity" to "0.4"
+                        "scaling factor" to "%.2f".format(Locale.ROOT, scaling),
+                        "viewing distance" to "4096.0",
+                        "camera sensitivity" to "0.5",
+                        "stats x" to "0.0",
+                        "stats y" to "0.0",
+                        "stats w" to "0.375",
+                        "stats h" to "0.4275",
+                        "spells x" to "0.625",
+                        "spells y" to "0.5725",
+                        "spells w" to "0.375",
+                        "spells h" to "0.4275",
+                        "map x" to "0.625",
+                        "map y" to "0.0",
+                        "map w" to "0.375",
+                        "map h" to "0.5725",
+                        "inventory y" to "0.4275",
+                        "inventory w" to "0.6225",
+                        "inventory h" to "0.5725",
+                        "inventory container x" to "0.0",
+                        "inventory container y" to "0.4275",
+                        "inventory container w" to "0.6225",
+                        "inventory container h" to "0.5725",
+                        "inventory barter x" to "0.0",
+                        "inventory barter y" to "0.4275",
+                        "inventory barter w" to "0.6225",
+                        "inventory barter h" to "0.5725",
+                        "inventory companion x" to "0.0",
+                        "inventory companion y" to "0.4275",
+                        "inventory companion w" to "0.6225",
+                        "inventory companion h" to "0.5725",
+                        "dialogue x" to "0.095",
+                        "dialogue y" to "0.095",
+                        "dialogue w" to "0.810",
+                        "dialogue h" to "0.890",
+                        "console x" to "0.0",
+                        "console y" to "0.0",
+                        "container x" to "0.25",
+                        "container y" to "0.0",
+                        "container w" to "0.75",
+                        "container h" to "0.375",
+                        "barter x" to "0.25",
+                        "barter y" to "0.0",
+                        "barter w" to "0.75",
+                        "barter h" to "0.375",
+                        "companion x" to "0.25",
+                        "companion y" to "0.0",
+                        "companion w" to "0.75",
+                        "companion h" to "0.375",
+                        "stretch menu background" to "true",
+                        "use additional anim sources" to "true",
+                        "prevent merchant equipping" to "true",
+                        "framerate limit" to "60.60",
+                        "color topic enable" to "true",
+                        "preferred locales" to "ru,en",
+                        "shader" to "true",
+                        "small feature culling pixel size" to "9.0",
+                        "reverse z" to "true",
+                        "preload num threads" to "1",
+                        "preload doors" to "false",
+                        "actor collision shape type" to "1",
+                        "show owned" to "3",
+                        "show projectile damage" to "true",
+                        "show melee info" to "true",
+                        "show enchant chance" to "true",
+                        "strength influences hand to hand" to "2",
+                        "weapon sheathing" to "true",
+                        "shield sheathing" to "true",
+                        "only appropriate ammunition bypasses resistance" to "true",
+                        "max lights" to "8",
+                        "enable" to "true",
+                        "paging" to "true",
+                        "load unsupported nif files" to "true",
+                        "max quicksaves" to "3",
+                        "anisotropy" to "4",
+                        "turn to movement direction" to "true",
+                        "smooth movement" to "true",
+                        "always allow stealing from knocked out actors" to "true",
+                        "lod factor" to "0.7",
+                        "composite map resolution" to "512",
+                        "max composite geometry size" to "4.0",
+                        "object paging" to "true",
+                        "object paging active grid" to "true",
+                        "object paging merge factor" to "100000",
+                        "object paging min size" to "1",
+                        "object paging min size merge factor" to "0.039",
+                        "object paging min size cost multiplier" to "1",
+                        "player shadows" to "true",
+                        "actor shadows" to "true",
+                        "maximum shadow map distance" to "4096"
                 ))
+
+                writeUserSettings()
 
                 runOnUiThread {
                     obtainFixedScreenResolution()
@@ -561,7 +620,7 @@ class MainActivity : AppCompatActivity() {
                     runGame()
                 }
             } catch (e: IOException) {
-                Log.e(TAG, "Failed to write config files.", e)
+                Log.e(TAG, "Невозможно записать файл настроек.", e)
             }
         }
         th.start()
@@ -571,6 +630,7 @@ class MainActivity : AppCompatActivity() {
         menu.clear()
         val inflater = menuInflater
         inflater.inflate(R.menu.menu_settings, menu)
+
         if (!MyApp.haveBugsnagApiKey)
             menu.findItem(R.id.action_bugsnag_consent).setVisible(false)
         return super.onPrepareOptionsMenu(menu)
@@ -578,10 +638,66 @@ class MainActivity : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
-            R.id.action_reset_config -> {
-                removeUserConfig()
-                removeStaticFiles()
-                Toast.makeText(this, getString(R.string.config_was_reset), Toast.LENGTH_SHORT).show()
+            R.id.action_reset_user_config -> {
+                AlertDialog.Builder(this)
+                    .setTitle("Требуется внимание")
+                    .setMessage("Вы хотите сбросить пользовательские настройки?")
+                    .setPositiveButton("Да") { _, _ ->
+                        removeUserConfig()
+                        Toast.makeText(this, getString(R.string.user_config_was_reset), Toast.LENGTH_SHORT).show()
+                    }
+                    .setNegativeButton("Нет", null)
+                    .show()
+                true
+            }
+
+            R.id.action_reset_user_resources -> {
+                AlertDialog.Builder(this)
+                    .setTitle("Требуется внимание")
+                    .setMessage("Вы хотите сбросить пользовательские ресурсы?")
+                    .setPositiveButton("Да") { _, _ ->
+                        removeStaticFiles()
+                        removeResourceFiles()
+                        Toast.makeText(this, getString(R.string.user_resources_was_reset), Toast.LENGTH_SHORT).show()
+                    }
+                    .setNegativeButton("Нет", null)
+                    .show()
+                true
+            }
+
+            R.id.action_theme_system -> {
+                with (prefs.edit()) {
+                    putInt(getString(R.string.theme), 0)
+                    apply()
+                }
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
+                Toast.makeText(this, "Системная тема", Toast.LENGTH_SHORT).show()
+                true
+            }
+
+            R.id.action_theme_light -> {
+                with (prefs.edit()) {
+                    putInt(getString(R.string.theme), 1)
+                    apply()
+                }
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
+                Toast.makeText(this, "Светлая тема", Toast.LENGTH_SHORT).show()
+                true
+            }
+
+            R.id.action_theme_dark -> {
+                with (prefs.edit()) {
+                    putInt(getString(R.string.theme), 2)
+                    apply()
+                }
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
+                Toast.makeText(this, "Темная тема", Toast.LENGTH_SHORT).show()
+                true
+            }
+
+            R.id.action_generate_navmesh -> {
+                Os.setenv("OPENMW_GENERATE_NAVMESH_CACHE", "1", true)
+                checkStartGame()
                 true
             }
 
@@ -612,5 +728,48 @@ class MainActivity : AppCompatActivity() {
 
         var resolutionX = 0
         var resolutionY = 0
+    }
+
+    class CaptureCrash : Thread.UncaughtExceptionHandler {
+        override fun uncaughtException(thread: Thread, throwable: Throwable) {
+            saveCrashLog(throwable)
+            android.os.Process.killProcess(android.os.Process.myPid());
+            exitProcess(1)
+        }
+
+        private fun saveCrashLog(throwable: Throwable) {
+            try {
+                val logFile = File(Constants.USER_CONFIG + "/" + "crash.log")
+                if (!logFile.exists()) {
+                    logFile.createNewFile()
+                }
+
+                FileWriter(logFile, true).use { writer ->
+                    writer.append("Device: ${Build.MODEL} (API ${Build.VERSION.SDK_INT})\n")
+                    writer.append("${getCurrentDateTime()}:\t")
+                    printFullStackTrace(throwable, PrintWriter(writer))
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        private fun printFullStackTrace(throwable: Throwable, printWriter: PrintWriter) {
+            printWriter.println(throwable.toString())
+            throwable.stackTrace.forEach { element ->
+                printWriter.print("\t $element \n")
+            }
+            val cause = throwable.cause
+            if (cause != null) {
+                printWriter.print("Caused by:\t")
+                printFullStackTrace(cause, printWriter)
+            }
+            printWriter.print("\n")
+        }
+
+        fun getCurrentDateTime(): String {
+            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            return sdf.format(Date())
+        }
     }
 }

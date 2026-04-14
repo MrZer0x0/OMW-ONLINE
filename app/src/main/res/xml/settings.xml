@@ -1,27 +1,182 @@
-<?xml version="1.0" encoding="utf-8" ?>
-<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto" xmlns:android="http://schemas.android.com/apk/res/android">
-	<PreferenceCategory android:title="@string/general_settings" android:key="general_settings">
-		<Preference android:title="@string/game_files" android:key="game_files" />
-		<Preference android:title="@string/mods" android:key="pref_mods" />
-		<ListPreference android:entries="@array/pref_server_select_entries" android:title="@string/pref_server_select" android:key="commandLine" android:summary="%s" android:defaultValue="@string/pref_server_select_default" android:dialogTitle="@string/pref_server_select" android:entryValues="@array/pref_server_select_values" />
-		<EditTextPreference android:title="@string/pref_commandLine" android:key="commandLine" />
-	</PreferenceCategory>
-	<PreferenceCategory android:title="@string/pref_ui">
-		<ListPreference android:entries="@array/pref_encoding_entries" android:title="@string/pref_encoding" android:key="pref_encoding" android:summary="%s" android:defaultValue="@string/pref_encoding_default" android:dialogTitle="@string/pref_encoding" android:entryValues="@array/pref_encoding_values" />
-		<Preference android:title="@string/action_show_screen_controls" android:key="pref_controls" android:summary="On-screen interface elements" />
-		<EditTextPreference android:baselineAligned="false" android:hint="1.0" android:title="@string/pref_gamma" android:key="pref_gamma" android:dialogTitle="@string/pref_gamma" android:inputType="numberDecimal" android:textAllCaps="false" />
-		<ListPreference android:entries="@array/pref_mouse_mode_entries" android:title="@string/pref_mouse_mode" android:key="pref_mouse_mode" android:summary="%s" android:defaultValue="@string/pref_mouse_mode_default" android:dialogTitle="@string/pref_mouse_mode" android:entryValues="@array/pref_mouse_mode_values" />
-		<EditTextPreference android:hint="640x480" android:title="@string/pref_customResolution" android:key="pref_customResolution" android:dialogTitle="@string/pref_customResolution" />
-		<CheckBoxPreference android:title="@string/pref_hide_controls" android:key="pref_hide_controls" android:summary="Disable if playing on TV box or with gamepad" android:defaultValue="false" />
-		<CheckBoxPreference android:title="@string/pref_always_show_top_bar" android:key="pref_always_show_top_bar" android:defaultValue="false" />
-		<CheckBoxPreference android:title="@string/pref_show_qp" android:key="pref_show_qp" android:defaultValue="false" />
-		<CheckBoxPreference android:title="@string/pref_show_fn" android:key="pref_show_fn" android:defaultValue="false" />
-		<CheckBoxPreference android:title="@string/pref_screen_keeper" android:key="pref_screen_keeper" android:defaultValue="true" />
-	</PreferenceCategory>
-	<PreferenceCategory android:title="@string/pref_menu_gui">
-		<EditTextPreference android:textStyle="bold" android:hint="1.5" android:title="@string/pref_uiScaling" android:key="pref_uiScaling" android:dialogTitle="@string/pref_uiScaling" android:inputType="numberDecimal" />
-	</PreferenceCategory>
-	<PreferenceCategory android:title="@string/pref_advanced">
-		<ListPreference android:entries="@array/pref_debug_level_entries" android:title="@string/pref_debug_level" android:key="pref_debug_level" android:summary="%s" android:defaultValue="@string/pref_debug_level_default" android:dialogTitle="@string/pref_debug_level" android:entryValues="@array/pref_debug_level_values" />
-	</PreferenceCategory>
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory
+        android:key="general_settings"
+        android:title="@string/general_settings">
+
+        <Preference
+            android:key="game_files"
+            android:title="@string/game_files"
+            />
+
+        <Preference
+            android:title="@string/mods"
+            android:key="pref_mods"
+            />
+
+        <ListPreference
+            android:key="commandLine"
+            android:title="@string/pref_server_select"
+            android:dialogTitle="@string/pref_server_select"
+            android:entries="@array/pref_server_select_entries"
+            android:entryValues="@array/pref_server_select_values"
+            android:defaultValue="@string/pref_server_select_default"
+            android:summary="%s"
+            />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/category_performance">
+
+        <CheckBoxPreference
+            android:key="terrain_key"
+            android:title="Включить удалённый ландшафт"
+            android:summary="Данная опция увеличит максимальную дальность прорисовки"/>
+        <CheckBoxPreference
+            android:key="preload_key"
+            android:title="Включить теневую подгрузку локаций"
+            android:summary="Ускоряет подгрузку локаций при путешествиях, но снижает производительность"/>
+        <CheckBoxPreference
+            android:key="shadows_key"
+            android:title="Включить тени Игрока и NPC"
+            android:summary="Включает тени для Игрока и всех NPC и существ (Стабильно)"/>
+        <CheckBoxPreference
+            android:key="shadowso_key"
+            android:title="Включить тени объектов"
+            android:summary="Для использования требуется ВКЛ тени игрока и NPC! (Нестабильно)"/>
+        <CheckBoxPreference
+            android:key="sp_key"
+            android:title="Включить мягкие частицы"
+            android:summary="Улучшает освещение сцены"/>
+        <CheckBoxPreference
+            android:key="tn_key"
+            android:title="Включить NormalMap почвы"
+            android:summary="Объемные текстуры почвы (Необходимо наличие _n.dds текстур в кеше)"/>
+        <CheckBoxPreference
+            android:key="on_key"
+            android:title="Включить NormalMap объектов"
+            android:summary="Объемные текстуры объектов (Необходимо наличие _n.dds текстур в кеше)"/>
+        <CheckBoxPreference
+            android:key="ts_key"
+            android:title="Включить SpecularMap почвы"
+            android:summary="Текстуры отражения почвы (Необходимо наличие _spec.dds текстур в кеше)"/>
+        <CheckBoxPreference
+            android:key="os_key"
+            android:title="Включить SpecularMap объектов"
+            android:summary="Текстуры отражения объектов (Необходимо наличие _spec.dds текстур в кеше)"/>
+    </PreferenceCategory>
+
+
+    <PreferenceCategory android:title="@string/pref_ui">
+        <Preference
+            android:title="@string/action_show_screen_controls"
+            android:key="pref_controls"
+            />
+
+        <EditTextPreference
+            android:key="pref_uiScaling"
+            android:title="@string/pref_uiScaling"
+            android:dialogTitle="@string/pref_uiScaling"
+            android:inputType="numberDecimal"
+            android:hint="1.5"
+            />
+
+        <ListPreference
+            android:key="pref_mouse_mode"
+            android:title="@string/pref_mouse_mode"
+            android:dialogTitle="@string/pref_mouse_mode"
+            android:entries="@array/pref_mouse_mode_entries"
+            android:entryValues="@array/pref_mouse_mode_values"
+            android:defaultValue="@string/pref_mouse_mode_default"
+            android:summary="%s"
+            />
+
+        <CheckBoxPreference
+            android:key="gyroscope_key"
+            android:title="Включить управление гироскопом"/>
+
+        <CheckBoxPreference
+            android:key="pref_hide_controls"
+            android:title="@string/pref_hide_controls" />
+
+        <CheckBoxPreference
+            android:key="pref_always_show_top_bar"
+            android:title="@string/pref_always_show_top_bar" />
+
+        <CheckBoxPreference
+            android:key="pref_show_qp"
+            android:title="@string/pref_show_qp" />
+
+        <CheckBoxPreference
+            android:key="pref_show_fn"
+            android:title="@string/pref_show_fn" />
+
+        <CheckBoxPreference
+            android:key="pref_screen_keeper"
+            android:title="@string/pref_screen_keeper"/>
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/pref_graphics">
+        <EditTextPreference
+            android:key="pref_customResolution"
+            android:title="@string/pref_customResolution"
+            android:dialogTitle="@string/pref_customResolution"
+            android:hint="640x480"
+            />
+
+        <CheckBoxPreference
+            android:key="pref_display_cutout_area"
+            android:title="@string/pref_display_cutout_area"
+            android:defaultValue="true"/>
+
+        <CheckBoxPreference
+            android:key="pref_avoid16bits"
+            android:title="@string/pref_avoid16bits"
+            android:summary="Внимание! Экспериментальная опция, может привести к графическим искажениям"
+            android:defaultValue="true"/>
+
+        <ListPreference
+            android:key="pref_textureShrinking_v2"
+            android:title="@string/pref_textureShrinking"
+            android:dialogTitle="@string/pref_textureShrinking"
+            android:entries="@array/pref_textureShrinking_entries"
+            android:entryValues="@array/pref_textureShrinking_values"
+            android:defaultValue="@string/pref_textureShrinking_default"
+            android:summary="%s"
+        />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/pref_advanced">
+
+        <ListPreference
+            android:key="pref_encoding"
+            android:summary="%s"
+            android:title="@string/pref_encoding"
+            android:dialogTitle="@string/pref_encoding"
+            android:entries="@array/pref_encoding_entries"
+            android:entryValues="@array/pref_encoding_values"
+            android:defaultValue="@string/pref_encoding_default"
+            />
+
+        <ListPreference
+            android:key="pref_debug_level"
+            android:title="@string/pref_debug_level"
+            android:dialogTitle="@string/pref_debug_level"
+            android:entries="@array/pref_debug_level_entries"
+            android:entryValues="@array/pref_debug_level_values"
+            android:defaultValue="@string/pref_debug_level_default"
+            android:summary="%s"
+            />
+
+        <EditTextPreference
+            android:key="commandLine"
+            android:title="@string/pref_commandLine"
+            />
+
+        <EditTextPreference
+            android:key="envLine"
+            android:title="@string/pref_envLine"
+            />
+
+    </PreferenceCategory>
+
 </PreferenceScreen>

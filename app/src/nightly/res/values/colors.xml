@@ -1,6 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#00002A</color>
-    <color name="colorPrimaryDark">#000000</color>
-    <color name="colorAccent">#FF4081</color>
+    <color name="colorPrimary">#0E0D09</color>
+    <color name="colorPrimaryDark">#0A0907</color>
+    <color name="colorAccent">#E4C487</color>
+
+    <color name="modItemBackgroundColor">#1B1A15</color>
+    <color name="modItemSelectedColor">#2A2720</color>
+    <color name="modItemTextColor">#EAD8B0</color>
+
+    <color name="statusBarColor">#0A0907</color>
+
+    <!-- Storage Chooser -->
+    <array name="default_light">
+        <!-- Overview -->
+        <item>#0E0D09</item> <!--  Top Header bg -->
+        <item>#EAD8B0</item> <!-- header text   -->
+        <item>#191814</item> <!-- list bg  -->
+        <item>#EAD8B0</item> <!--  storage list name text  -->
+        <item>#E4C487</item> <!-- free space text  -->
+        <item>#7A7262</item> <!-- memory bar -->
+
+        <!-- secondary dialog colors -->
+        <item>#E4C487</item> <!-- folder icon color -->
+        <item>#1B1A15</item> <!-- list bg -->
+        <item>#EAD8B0</item> <!-- list text -->
+        <item>#EAD8B0</item> <!-- address bar text color -->
+        <item>@color/chevronBgColor</item> <!-- new folder hint tint -->
+        <item>#E4C487</item> <!-- select button color -->
+        <item>#1B1A15</item> <!-- new folder layout bg -->
+        <item>#E4C487</item> <!-- new multi fab -->
+        <item>#0E0D09</item> <!-- new multi fab -->
+    </array>
 </resources>

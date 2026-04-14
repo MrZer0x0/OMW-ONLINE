@@ -1,4 +1,174 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">OMW Nightly</string>
+    <string name="app_name">OpenMW Mobile</string>
+
+    <string-array name="pref_encoding_entries">
+        <item>Центральная и Восточная Европа (win1250)</item>
+        <item>Кириллица (win1251)</item>
+        <item>Латиница (win1252)</item>
+    </string-array>
+
+    <string-array name="pref_encoding_values">
+        <item>win1250</item>
+        <item>win1251</item>
+        <item>win1252</item>
+    </string-array>
+
+    <string name="general_settings">Настройки</string>
+    <string name="start_game_label">Начать игру</string>
+    <string name="closeDrawer">Навигация</string>
+    <string name="openDrawer">Навигация закрыта</string>
+    <string name="game_files">Игровые файлы</string>
+
+    <string name="pref_graphicsLibrary">Графическая библиотека</string>
+    <string name="pref_graphicsLibrary_default">gles2</string>
+    <string name="pref_advanced">Расширенные</string>
+    <string name="pref_graphics">Графика</string>
+    <string name="pref_commandLine">Пользовательские аргументы командной строки</string>
+    <string name="pref_envLine">Пользовательские переменные окружения</string>
+    <string name="pref_ui">Пользовательский интерфейс</string>
+    <string name="pref_textureShrinking">Сжатие текстур</string>
+    <string name="pref_textureShrinking_default">none</string>
+    <string name="pref_uiScaling">Коэффициент масштабирования интерфейса</string>
+    <string name="uiScaling_auto">Авто (%1$.2f)</string>
+    <string name="pref_screen_keeper">Держать экран всегда включенным</string>
+    <string name="pref_touchpadSensitivity">Чувствительность виртуального тачпада</string>
+    <string name="action_reset_config">Сбросить статические конфигурационные файлы</string>
+    <string name="action_reset_user_config">Сбросить конфигурации</string>
+    <string name="action_reset_user_resources">Сбросить ресурсы</string>
+    <string name="action_reset_screen_controls">Сбросить элементы управления</string>
+    <string name="action_show_screen_controls">Элементы управления на экране…</string>
+    <string name="pref_hide_controls">Скрыть кнопки на экране</string>
+    <string name="config_was_reset">Статическая конфигурация сброшена на значения по умолчанию</string>
+    <string name="user_config_was_reset">Пользовательская конфигурация сброшена на значения по умолчанию</string>
+    <string name="user_resources_was_reset">Пользовательские ресурсы сброшены на значения по умолчанию</string>
+    <string name="pref_lang">Языковые настройки</string>
+    <string name="pref_encoding">Язык игры</string>
+    <string name="pref_encoding_default">win1251</string>
+    <string name="btn_opacityPlus">Прозрачность+</string>
+    <string name="btn_opacityMinus">Прозрачность-</string>
+    <string name="btn_sizePlus">Размер+</string>
+    <string name="btn_sizeMinus">Размер-</string>
+    <string name="btn_resetControlsLayout">Сбросить к значениям по умолчанию</string>
+    <string name="pref_physicsFPS2">FPS физики</string>
+    <string name="pref_physicsFPS2_default">30</string>
+
+    <string-array name="pref_textureShrinking_entries">
+        <item>Нет</item>
+        <item>Низкое</item>
+        <item>Среднее</item>
+        <item>Высокое</item>
+    </string-array>
+
+    <string-array name="pref_textureShrinking_values">
+        <item>none</item>
+        <item>low</item>
+        <item>medium</item>
+        <item>high</item>
+    </string-array>
+
+    <string name="btn_back">Назад</string>
+    <string name="pref_customResolution">Пользовательское разрешение</string>
+    <string name="pref_display_cutout_area">Отображать в области выреза</string>
+    <string name="pref_avoid16bits">Избегать 16-битных цветов</string>
+    <string name="mods">Моды…</string>
+    <string name="action_about">О программе</string>
+    <string name="about_title">О OpenMW Mobile</string>
+
+    <string name="action_theme">Тема</string>
+    <string name="action_theme_system">Система</string>
+    <string name="action_theme_light">Светлая</string>
+    <string name="action_theme_dark">Темная</string>
+
+    <string name="action_generate_navmesh">Сгенерировать кэш NavMesh</string>
+
+    <string name="action_set_mods_dir">Установить пользовательскую директорию модов</string>
+    <string name="action_mods_preset">Списки контента</string>
+
+    <string name="activity_mods">Моды</string>
+    <string name="tab_plugins">Плагины</string>
+    <string name="tab_resources">Ресурсы</string>
+    <string name="tab_dirs">Директории</string>
+    <string name="tab_groundcover">Травяное покрытия</string>
+    <string name="data_error_title">Ошибка при поиске файлов данных</string>
+    <string name="data_error_message">Пожалуйста, выберите директорию, которая содержит файл \"Morrowind.ini\" и директорию \"Data Files\".</string>
+    <string name="permissions_error_title">Нет разрешений</string>
+    <string name="permissions_error_message">OMW нужны разрешения на доступ к хранилищу, чтобы найти и получить доступ к файлам игры Morrowind. Пожалуйста, предоставьте это разрешение через настройки.</string>
+    <string name="ini_error_message">Ошибка при преобразовании конфигурационного файла. Пожалуйста, убедитесь, что ваш \"Morrowind.ini\" корректен.</string>
+
+    <string name="no_data_files_title">Файлы данных не найдены</string>
+    <string name="no_data_files_message">Вы должны скопировать файлы игры Morrowind на ваше устройство и выбрать путь в разделе \"Игровые файлы\", прежде чем игра сможет быть запущена.</string>
+    <string name="category_performance">Производительность</string>
+
+    <string name="no_content_files_title">Нет файлов контента!</string>
+    <string name="no_content_files_message">Нет включенных файлов контента. Перед запуском игры вы должны активировать хотя бы один файл плагина из меню \"Моды…\".</string>
+    <string name="no_content_files_dismiss">Продолжить все равно</string>
+
+    <string name="configure_mods">Настроить моды</string>
+
+    <string name="pref_mouse_mode">Режим мыши в меню</string>
+    <string-array name="pref_mouse_mode_entries">
+        <item>Гибридное управление</item>
+        <item>Управления джойстиком</item>
+        <item>Абсолютное сенсорное управление</item>
+    </string-array>
+    <string-array name="pref_mouse_mode_values">
+        <item>hybrid</item>
+        <item>joystick</item>
+        <item>touch</item>
+    </string-array>
+    <string name="pref_mouse_mode_default">touch</string>
+
+    <string name="bugsnag_yes">Да</string>
+    <string name="bugsnag_no">Нет</string>
+    <string name="bugsnag_policy">Политика конфиденциальности</string>
+
+    <string name="bugsnag_consent_title">Автоматически сообщать о сбоях?</string>
+    <string name="bugsnag_consent_message">Вы хотите включить автоматическую отчетность о сбоях?\nЕсли произойдет сбой, некоторые данные о вашем устройстве, конфигурации и установленных модах будут автоматически отправлены в Bugsnag.\nЭту настройку можно изменить в любое время в меню.</string>
+
+    <string name="bugsnag_consent_restart_title">Пожалуйста, перезапустите приложение</string>
+    <string name="bugsnag_consent_restart_message">Вы должны перезапустить приложение, чтобы эти настройки вступили в силу.</string>
+    <string name="action_bugsnag_consent">Отчет о сбоях</string>
+
+    <string name="dialog_howto">Как</string>
+
+    <string name="no_browser_title">Невозможно открыть URL</string>
+    <string name="no_browser_message">У вас, похоже, нет установленного веб-браузера. Попытка открыть следующий URL:\n\n%1$s</string>
+    <string name="pref_show_qp">Включить быстродоступные клавиши</string>
+    <string name="pref_show_fn">Включить клавиши FN</string>
+    <string name="pref_always_show_top_bar">Всегда показывать иконки на верхней панели</string>
+
+    <string name="theme">0</string>
+
+    <!-- Server selection from OMW-ONLINE2 -->
+    <string name="pref_server_select">Выбор сервера</string>
+    <string name="pref_server_select_default">--connect 89.223.65.44:33365</string>
+    <string-array name="pref_server_select_entries">
+        <item>AshesWind</item>
+        <item>Vanilla (test)</item>
+        <item>Другой</item>
+    </string-array>
+    <string-array name="pref_server_select_values">
+        <item>--connect 89.223.65.44:33365</item>
+        <item>--connect 47.222.179.199:25563</item>
+        <item></item>
+    </string-array>
+
+    <!-- Debug level from OMW-ONLINE2 -->
+    <string name="pref_debug_level">Уровень отладки OpenMW</string>
+    <string name="pref_debug_level_default">ERROR</string>
+    <string-array name="pref_debug_level_entries">
+        <item>DEBUG</item>
+        <item>VERBOSE</item>
+        <item>INFO</item>
+        <item>WARNING</item>
+        <item>ERROR</item>
+    </string-array>
+    <string-array name="pref_debug_level_values">
+        <item>DEBUG</item>
+        <item>VERBOSE</item>
+        <item>INFO</item>
+        <item>WARNING</item>
+        <item>ERROR</item>
+    </string-array>
 </resources>

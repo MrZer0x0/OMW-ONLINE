@@ -40,6 +40,13 @@ import ui.controls.Osc
 
 import utils.Utils.hideAndroidControls
 
+import android.util.DisplayMetrics
+import android.os.AsyncTask
+import android.widget.ImageView
+import android.widget.TextView
+import android.graphics.Typeface
+import android.graphics.Rect
+
 /**
  * Enum for different mouse modes as specified in settings
  */
@@ -66,6 +73,14 @@ class GameActivity : SDLActivity() {
     val layout: RelativeLayout
         get() = SDLActivity.mLayout as RelativeLayout
 
+    /**
+     * loadLibraries() — uses OMW-ONLINE2 library loading sequence which matches the
+     * native .so files compiled by Docent27. This is the critical fix:
+     * the native libSDL2.so expects the OLD nativeSetScreenResolution(IIIIF)V signature,
+     * so we must use the matching SDLActivity.java (see separate file).
+     *
+     * Added: debug level env vars, texture shrinking, avoid16bits from openmw-android-Build.
+     */
     override fun loadLibraries() {
         prefs = PreferenceManager.getDefaultSharedPreferences(this)
         val graphicsLibrary = prefs!!.getString("pref_graphicsLibrary_v2", "")
@@ -78,12 +93,12 @@ class GameActivity : SDLActivity() {
                 Log.e("OpenMW", "Failed setting environment variables.")
                 e.printStackTrace()
             }
-
         }
 
         System.loadLibrary("c++_shared")
         System.loadLibrary("openal")
         System.loadLibrary("SDL2")
+
         if (graphicsLibrary != "gles1") {
             try {
                 Os.setenv("OPENMW_GLES_VERSION", "2", true)
@@ -96,9 +111,9 @@ class GameActivity : SDLActivity() {
                 Log.e("OpenMW", "Failed setting environment variables.")
                 e.printStackTrace()
             }
-
         }
 
+        // Debug level from OMW-ONLINE2
         val omwDebugLevel = prefs!!.getString("pref_debug_level", "")
         if (omwDebugLevel == "DEBUG") Os.setenv("OPENMW_DEBUG_LEVEL", "DEBUG", true)
         if (omwDebugLevel == "VERBOSE") Os.setenv("OPENMW_DEBUG_LEVEL", "VERBOSE", true)
@@ -106,27 +121,41 @@ class GameActivity : SDLActivity() {
         if (omwDebugLevel == "WARNING") Os.setenv("OPENMW_DEBUG_LEVEL", "WARNING", true)
         if (omwDebugLevel == "ERROR") Os.setenv("OPENMW_DEBUG_LEVEL", "ERROR", true)
 
+        // Texture shrinking from openmw-android-Build
+        val textureShrinkingOption = prefs!!.getString("pref_textureShrinking_v2", "")
+        if (textureShrinkingOption == "low") Os.setenv("LIBGL_SHRINK", "2", true)
+        if (textureShrinkingOption == "medium") Os.setenv("LIBGL_SHRINK", "7", true)
+        if (textureShrinkingOption == "high") Os.setenv("LIBGL_SHRINK", "6", true)
+
+        // Avoid 16bits from openmw-android-Build
+        val avoid16bits = prefs!!.getBoolean("pref_avoid16bits", true)
+        if (avoid16bits) Os.setenv("LIBGL_AVOID16BITS", "1", true)
+        else Os.setenv("LIBGL_AVOID16BITS", "0", true)
+
+        // MyGUI preset from OMW-ONLINE2
         val omwMyGui = prefs!!.getString("pref_mygui", "")
         if (omwMyGui == "preset_01") Os.setenv("OPENMW_MYGUI", "preset_01", true)
 
+        // Water preset from OMW-ONLINE2
         val omwWaterPreset = prefs!!.getString("pref_water_preset", "")
         if (omwWaterPreset == "1") {
-                Os.setenv("OPENMW_WATER_VERTEX", "water_vertex.glsl", true)
-                Os.setenv("OPENMW_WATER_FRAGMENT", "water_fragment.glsl", true)
-            } else {
-                Os.setenv("OPENMW_WATER_VERTEX", "water_vertex2.glsl", true)
-                Os.setenv("OPENMW_WATER_FRAGMENT", "water_fragment2.glsl", true)
-            }
+            Os.setenv("OPENMW_WATER_VERTEX", "water_vertex.glsl", true)
+            Os.setenv("OPENMW_WATER_FRAGMENT", "water_fragment.glsl", true)
+        } else {
+            Os.setenv("OPENMW_WATER_VERTEX", "water_vertex2.glsl", true)
+            Os.setenv("OPENMW_WATER_FRAGMENT", "water_fragment2.glsl", true)
+        }
 
+        // VFS selector from OMW-ONLINE2
         val omwVfsSl = prefs!!.getString("pref_vfs_selector", "")
         if (omwVfsSl == "1") Os.setenv("OPENMW_VFS_SELECTOR", "vfs", true)
         if (omwVfsSl == "2") Os.setenv("OPENMW_VFS_SELECTOR", "vfs2", true)
 
+        // Custom environment variables from openmw-android-Build
         val envline: String = PreferenceManager.getDefaultSharedPreferences(this).getString("envLine", "").toString()
         if (envline.length > 0) {
-            val envs: List<String> = envline.split(" ")
+            val envs: List<String> = envline.split(" ", "\n")
             var i = 0
-
             repeat(envs.count())
             {
                 val env: List<String> = envs[i].split("=")
@@ -145,10 +174,88 @@ class GameActivity : SDLActivity() {
         return "libopenmw.so"
     }
 
+    // NavMesh progress bar from openmw-android-Build
+    private fun showProgressBar() {
+        val dm = DisplayMetrics()
+        windowManager.defaultDisplay.getRealMetrics(dm)
+
+        val progressBarBackground = ImageView(layout.context)
+        progressBarBackground.setImageResource(R.drawable.progressbarbackground)
+        progressBarBackground.setScaleType(ImageView.ScaleType.FIT_XY)
+        progressBarBackground.setX(((dm.widthPixels / 2) - 405).toFloat())
+        progressBarBackground.setY(((dm.heightPixels / 2) - 105).toFloat())
+        layout.addView(progressBarBackground)
+        progressBarBackground.getLayoutParams().width = 810
+        progressBarBackground.getLayoutParams().height = 60
+
+        val progressBar = ImageView(layout.context)
+        progressBar.setImageResource(R.drawable.progressbar)
+        progressBar.setScaleType(ImageView.ScaleType.FIT_XY)
+        progressBar.setX(((dm.widthPixels / 2) - 400).toFloat())
+        progressBar.setY(((dm.heightPixels / 2) - 100).toFloat())
+        layout.addView(progressBar)
+        progressBar.getLayoutParams().width = 0
+        progressBar.getLayoutParams().height = 50
+
+        val message = "GENERATING NAVMESH CACHE"
+        val text = TextView(this)
+        text.setText(message)
+        val bounds = Rect()
+        text.getPaint().getTextBounds(message.toString(), 0, message.length, bounds)
+        text.setX(((dm.widthPixels / 2) - (bounds.width() / 2)).toFloat())
+        text.setY(((dm.heightPixels / 2) - 200).toFloat())
+        text.setTypeface(null, Typeface.BOLD)
+        layout.addView(text)
+
+        val percentageText = TextView(this)
+        percentageText.setX((dm.widthPixels / 2).toFloat())
+        percentageText.setY(((dm.heightPixels / 2) + 50).toFloat())
+        layout.addView(percentageText)
+
+        Os.setenv("NAVMESHTOOL_MESSAGE", "0.0", true)
+        ProgressBarUpdater(percentageText, progressBar, dm.widthPixels, dm.heightPixels).execute()
+    }
+
+    class ProgressBarUpdater(val percentageText: TextView, val progressBar: ImageView, val screenWidth: Int, val screenHeight: Int) : AsyncTask<Void, String, String>() {
+        override fun doInBackground(vararg params: Void?): String {
+            while(Os.getenv("NAVMESHTOOL_MESSAGE") != "Done") {
+                publishProgress(Os.getenv("NAVMESHTOOL_MESSAGE"))
+                Thread.sleep(50)
+            }
+            return "DONE"
+        }
+
+        override fun onProgressUpdate(vararg progress: String?) {
+            super.onProgressUpdate()
+            progressBar.requestLayout()
+            progressBar.getLayoutParams().width = (8.0 * progress[0]!!.toFloat()).toInt()
+            val bounds = Rect()
+            percentageText.getPaint().getTextBounds(progress[0]!!.toString(), 0, progress[0]!!.length, bounds)
+            percentageText.setX(((screenWidth / 2) - (bounds.width() / 2)).toFloat())
+            percentageText.setText(progress[0])
+        }
+    }
+
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Display cutout handling from openmw-android-Build
+        val displayInCutoutArea = PreferenceManager.getDefaultSharedPreferences(this).getBoolean("pref_display_cutout_area", true)
+        if (displayInCutoutArea || android.os.Build.VERSION.SDK_INT < 29) {
+            window.attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
+
         KeepScreenOn()
-        showControls()
+
+        // NOTE: getPathToJni is NOT called here because the OMW-ONLINE2 native libopenmw.so
+        // does NOT export this symbol. If you switch to Docent27's native libs that DO export it,
+        // uncomment the following line:
+        // getPathToJni(filesDir.parent, Constants.USER_FILE_STORAGE)
+
+        if(Os.getenv("OPENMW_GENERATE_NAVMESH_CACHE") == "1")
+            showProgressBar()
+        else
+            showControls()
     }
 
     private fun showControls() {
@@ -180,9 +287,7 @@ class GameActivity : SDLActivity() {
         super.onDestroy()
     }
 
-
     override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
         if (hasFocus) {
             hideAndroidControls(this)
         }
@@ -193,6 +298,9 @@ class GameActivity : SDLActivity() {
         val commandlineParser = CommandlineParser("--resources " + Constants.USER_FILE_STORAGE + "/resources " + cmd!!)
         return commandlineParser.argv
     }
+
+    // IMPORTANT: Only uncomment this if using Docent27's native libs that export getPathToJni
+    // private external fun getPathToJni(path_global: String, path_user: String)
 
     companion object {
         var mouseMode = MouseMode.Hybrid
