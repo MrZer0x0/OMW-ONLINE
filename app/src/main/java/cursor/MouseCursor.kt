@@ -82,7 +82,7 @@ class MouseCursor(activity: GameActivity, private val osc: Osc?) : Choreographer
 
         cursor.layoutParams = RelativeLayout.LayoutParams(width, height)
 
-        activity.layout.addView(cursor)
+        activity.layout?.addView(cursor)
 
         choreographer = Choreographer.getInstance()
         choreographer.postFrameCallback(this)
