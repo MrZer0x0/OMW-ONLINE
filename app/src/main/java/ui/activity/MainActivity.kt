@@ -191,22 +191,8 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        var dataFilesList = ArrayList<String>()
-        dataFilesList.add(inst.findDataFiles())
-
-        val modsDir = PreferenceManager.getDefaultSharedPreferences(this)
-            .getString("mods_dir", "")!!
-
-        File(Constants.USER_FILE_STORAGE + "/launcher/ModsDatabases" + modsDir).mkdirs()
-
-        File(modsDir).listFiles()?.forEach {
-            if (!it.isFile())
-                dataFilesList.add(modsDir + it.getName())
-        }
-
-        val plugins = ModsCollection(ModType.Plugin, dataFilesList,
-            ModsDatabaseOpenHelper.getInstance(this))
-        if (plugins.mods.count { it.enabled } == 0) {
+        val plugins = collectMods(ModType.Plugin, ModsDatabaseOpenHelper.getInstance(this))
+        if (plugins.count { it.enabled } == 0) {
             AlertDialog.Builder(this)
                 .setTitle(R.string.no_content_files_title)
                 .setMessage(R.string.no_content_files_message)
@@ -231,6 +217,36 @@ class MainActivity : AppCompatActivity() {
                 deleteRecursive(child)
 
         fileOrDirectory.delete()
+    }
+
+
+    private fun getAdditionalModDataDirs(): List<String> {
+        val modsDir = PreferenceManager.getDefaultSharedPreferences(this)
+            .getString("mods_dir", "")!!
+
+        if (modsDir.isBlank()) {
+            return emptyList()
+        }
+
+        return File(modsDir).listFiles()
+            ?.filter { it.isDirectory }
+            ?.map { it.absolutePath }
+            ?.sorted()
+            ?: emptyList()
+    }
+
+    private fun collectMods(type: ModType, db: ModsDatabaseOpenHelper): List<mods.Mod> {
+        val modsByFilename = linkedMapOf<String, mods.Mod>()
+        val dataPaths = mutableListOf(GameInstaller.getDataFiles(this))
+        dataPaths.addAll(getAdditionalModDataDirs())
+
+        dataPaths.forEach { path ->
+            ModsCollection(type, path, db).mods.forEach { mod ->
+                modsByFilename.putIfAbsent(mod.filename, mod)
+            }
+        }
+
+        return modsByFilename.values.sortedBy { it.order }
     }
 
     private fun logConfig() {
@@ -272,42 +288,28 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val modsDir = PreferenceManager.getDefaultSharedPreferences(this)
-            .getString("mods_dir", "")!!
-
         val db = ModsDatabaseOpenHelper.getInstance(this)
+        val additionalDataDirs = getAdditionalModDataDirs()
 
-        var dataFilesList = ArrayList<String>()
-        var dataDirsPath = ArrayList<String>()
-        dataFilesList.add(GameInstaller.getDataFiles(this))
-        dataDirsPath.add(modsDir)
-
-        File(modsDir).listFiles()?.forEach {
-            if (!it.isFile())
-                dataFilesList.add(modsDir + it.getName())
-        }
-
-        val resources = ModsCollection(ModType.Resource, dataFilesList, db)
-        val dirs = ModsCollection(ModType.Dir, dataDirsPath, db)
-        val plugins = ModsCollection(ModType.Plugin, dataFilesList, db)
-        val groundcovers = ModsCollection(ModType.Groundcover, dataFilesList, db)
+        val resources = collectMods(ModType.Resource, db)
+        val plugins = collectMods(ModType.Plugin, db)
+        val groundcovers = collectMods(ModType.Groundcover, db)
 
         try {
             var output = base + "\n" + fallback + "\n"
 
-            resources.mods
+            resources
                 .filter { it.enabled }
                 .forEach { output += "fallback-archive=${it.filename}\n" }
 
-            dirs.mods
-                .filter { it.enabled }
-                .forEach { output += "data=" + '"' + modsDir + it.filename + '"' + "\n" }
+            additionalDataDirs
+                .forEach { output += "data=\"$it\"\n" }
 
-            plugins.mods
+            plugins
                 .filter { it.enabled }
                 .forEach { output += "content=${it.filename}\n" }
 
-            groundcovers.mods
+            groundcovers
                 .filter { it.enabled }
                 .forEach { output += "groundcover=${it.filename}\n" }
 
@@ -332,7 +334,7 @@ class MainActivity : AppCompatActivity() {
         assetCopier.copy("libopenmw/resources", Constants.RESOURCES)
         assetCopier.copy("libopenmw/openmw", Constants.GLOBAL_CONFIG)
 
-        File(Constants.VERSION_STAMP).writeText(BuildConfig.RANDOMIZER.toString())
+        File(Constants.VERSION_STAMP).writeText(BuildConfig.VERSION_CODE.toString())
     }
 
     private fun removeStaticFiles() {
@@ -493,7 +495,7 @@ class MainActivity : AppCompatActivity() {
             try {
                 try {
                     val stamp = File(Constants.VERSION_STAMP).readText().trim()
-                    if (stamp.toInt() != BuildConfig.RANDOMIZER) {
+                    if (stamp.toInt() != BuildConfig.VERSION_CODE) {
                         removeResourceFiles()
                     }
                 } catch (e: Exception) {
