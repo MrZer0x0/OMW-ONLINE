@@ -33,6 +33,7 @@ import android.preference.EditTextPreference
 import android.preference.Preference
 import android.preference.PreferenceFragment
 import android.preference.PreferenceGroup
+import android.widget.ListView
 import androidx.core.content.ContextCompat
 import androidx.appcompat.app.AlertDialog
 
@@ -116,12 +117,13 @@ class FragmentSettings : PreferenceFragment(), OnSharedPreferenceChangeListener 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
-        listView.setBackgroundColor(resources.getColor(R.color.launcherSurface))
-        listView.divider = ColorDrawable(resources.getColor(R.color.launcherDivider))
-        listView.dividerHeight = 1
+        val settingsList = view?.findViewById<ListView>(android.R.id.list) ?: return
+        settingsList.setBackgroundColor(resources.getColor(R.color.launcherSurface))
+        settingsList.divider = ColorDrawable(resources.getColor(R.color.launcherDivider))
+        settingsList.dividerHeight = 1
         val pad = (12 * resources.displayMetrics.density).toInt()
-        listView.setPadding(pad, pad, pad, pad)
-        listView.clipToPadding = false
+        settingsList.setPadding(pad, pad, pad, pad)
+        settingsList.clipToPadding = false
     }
 
     /**
