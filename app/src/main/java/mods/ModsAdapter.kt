@@ -20,7 +20,6 @@
 package mods
 
 import android.annotation.SuppressLint
-import android.graphics.Color
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.ItemTouchHelper
 import android.view.LayoutInflater
@@ -104,11 +103,11 @@ class ModsAdapter(private val collection: ModsCollection) : RecyclerView.Adapter
     }
 
     fun onRowSelected(modViewHolder: ModViewHolder) {
-        modViewHolder.rowView.setBackgroundColor(Color.LTGRAY)
+        modViewHolder.rowView.setBackgroundResource(R.drawable.mod_item_selected_background)
     }
 
     fun onRowClear(modViewHolder: ModViewHolder) {
-        modViewHolder.rowView.setBackgroundColor(Color.WHITE)
+        modViewHolder.rowView.setBackgroundResource(R.drawable.mod_item_background)
         collection.update()
     }
 }

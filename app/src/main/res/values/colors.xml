@@ -4,31 +4,37 @@
     <color name="colorPrimaryDark">#0A0907</color>
     <color name="colorAccent">#E4C487</color>
 
+    <color name="launcherBackground">#14130F</color>
+    <color name="launcherSurface">#1B1A15</color>
+    <color name="launcherSurfaceStrong">#232119</color>
+    <color name="launcherMutedText">#A89A7A</color>
+    <color name="launcherRipple">#33E4C487</color>
+    <color name="modSurface">#1A1914</color>
+
     <color name="modItemBackgroundColor">#1B1A15</color>
-    <color name="modItemSelectedColor">#2A2720</color>
+    <color name="modItemSelectedColor">#2E2A20</color>
+    <color name="modItemStrokeColor">#3F382A</color>
     <color name="modItemTextColor">#EAD8B0</color>
 
     <color name="statusBarColor">#0A0907</color>
 
     <!-- Storage Chooser -->
     <array name="default_light">
-        <!-- Overview -->
-        <item>#0E0D09</item> <!--  Top Header bg -->
-        <item>#EAD8B0</item> <!-- header text   -->
-        <item>#191814</item> <!-- list bg  -->
-        <item>#EAD8B0</item> <!--  storage list name text  -->
-        <item>#E4C487</item> <!-- free space text  -->
-        <item>#7A7262</item> <!-- memory bar -->
+        <item>#0E0D09</item>
+        <item>#EAD8B0</item>
+        <item>#191814</item>
+        <item>#EAD8B0</item>
+        <item>#E4C487</item>
+        <item>#7A7262</item>
 
-        <!-- secondary dialog colors -->
-        <item>#E4C487</item> <!-- folder icon color -->
-        <item>#1B1A15</item> <!-- list bg -->
-        <item>#EAD8B0</item> <!-- list text -->
-        <item>#EAD8B0</item> <!-- address bar text color -->
-        <item>@color/chevronBgColor</item> <!-- new folder hint tint -->
-        <item>#E4C487</item> <!-- select button color -->
-        <item>#1B1A15</item> <!-- new folder layout bg -->
-        <item>#E4C487</item> <!-- new multi fab -->
-        <item>#0E0D09</item> <!-- new multi fab -->
+        <item>#E4C487</item>
+        <item>#1B1A15</item>
+        <item>#EAD8B0</item>
+        <item>#EAD8B0</item>
+        <item>@color/chevronBgColor</item>
+        <item>#E4C487</item>
+        <item>#1B1A15</item>
+        <item>#E4C487</item>
+        <item>#0E0D09</item>
     </array>
 </resources>

@@ -3,36 +3,48 @@
     android:id="@+id/cardView"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="#282828"
-    android:backgroundTint="#00FFFFFF"
+    android:layout_marginStart="4dp"
+    android:layout_marginTop="4dp"
+    android:layout_marginEnd="4dp"
+    android:layout_marginBottom="4dp"
+    android:background="@drawable/mod_item_background"
+    android:gravity="center_vertical"
+    android:minHeight="56dp"
     android:orientation="horizontal"
+    android:paddingStart="8dp"
+    android:paddingEnd="8dp"
     android:visibility="visible">
 
     <ImageView
         android:id="@+id/handle"
-        android:layout_width="wrap_content"
-        android:layout_height="match_parent"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
         android:layout_gravity="center_vertical"
         android:padding="10dp"
         android:src="@drawable/ic_drag_handle_black_24dp"
-        android:tint="#969696" />
+        android:tint="@color/launcherMutedText" />
 
     <TextView
         android:id="@+id/txtTitle"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:paddingTop="4dp"
-        android:paddingBottom="4dp"
+        android:ellipsize="end"
+        android:maxLines="2"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
         android:text="Mod Name"
         android:textAlignment="viewStart"
-        android:textColor="#969696"
-        android:textSize="18sp" />
+        android:textColor="@color/modItemTextColor"
+        android:textSize="16sp"
+        android:textStyle="bold" />
 
     <CheckBox
         android:id="@+id/modCheckbox"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:paddingRight="10dp" />
+        android:buttonTint="@color/colorAccent"
+        android:paddingStart="8dp"
+        android:paddingEnd="4dp" />
 
 </LinearLayout>

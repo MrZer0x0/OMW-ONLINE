@@ -85,14 +85,15 @@ class MainActivity : AppCompatActivity() {
 
         Thread.setDefaultUncaughtExceptionHandler(CaptureCrash())
 
+        prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        with(prefs.edit()) {
+            putInt(getString(R.string.theme), 2)
+            apply()
+        }
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
+
         PermissionHelper.getWriteExternalStoragePermission(this@MainActivity)
         setContentView(R.layout.main)
-        prefs = PreferenceManager.getDefaultSharedPreferences(this)
-
-        val theme = prefs.getInt(getString(R.string.theme), 2)
-        if(theme == 0) AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
-        else if(theme == 1) AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
-        else AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
 
         fragmentManager.beginTransaction()
             .replace(R.id.content_frame, FragmentSettings()).commit()
@@ -664,36 +665,6 @@ class MainActivity : AppCompatActivity() {
                     }
                     .setNegativeButton("Нет", null)
                     .show()
-                true
-            }
-
-            R.id.action_theme_system -> {
-                with (prefs.edit()) {
-                    putInt(getString(R.string.theme), 0)
-                    apply()
-                }
-                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
-                Toast.makeText(this, "Системная тема", Toast.LENGTH_SHORT).show()
-                true
-            }
-
-            R.id.action_theme_light -> {
-                with (prefs.edit()) {
-                    putInt(getString(R.string.theme), 1)
-                    apply()
-                }
-                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
-                Toast.makeText(this, "Светлая тема", Toast.LENGTH_SHORT).show()
-                true
-            }
-
-            R.id.action_theme_dark -> {
-                with (prefs.edit()) {
-                    putInt(getString(R.string.theme), 2)
-                    apply()
-                }
-                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
-                Toast.makeText(this, "Темная тема", Toast.LENGTH_SHORT).show()
                 true
             }
 
