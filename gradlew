@@ -13,13 +13,13 @@
 # cp patch/water_fragment.glsl app/src/main/assets/libopenmw/resources/shaders/water_fragment.glsl
 # cp patch/water_vertex.glsl app/src/main/assets/libopenmw/resources/shaders/water_vertex.glsl
 cp patch/version app/src/main/assets/libopenmw/resources/version
-for abi in arm64-v8a armeabi-v7a x86 x86_64; do
-    src="app/src/main/jniLibs/$abi/libtes3mp.so"
-    dst="app/src/main/jniLibs/$abi/libopenmw.so"
-    if [ -f "$src" ]; then
-        mv "$src" "$dst"
-    fi
-done
+# for abi in arm64-v8a armeabi-v7a x86 x86_64; do
+    # src="app/src/main/jniLibs/$abi/libtes3mp.so"
+    # dst="app/src/main/jniLibs/$abi/libopenmw.so"
+    # if [ -f "$src" ]; then
+        # mv "$src" "$dst"
+    # fi
+# done
 # Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
 DEFAULT_JVM_OPTS=""
 

@@ -316,8 +316,8 @@ ExternalProject_Add(ffmpeg
     --cc=${host}-clang
     --arch=${ARCH}
     --cpu=${FFMPEG_CPU}
-    --enable-shared
-    --disable-static
+    --enable-static
+    --disable-shared
     --disable-programs
     --disable-doc
     --enable-small

@@ -70,8 +70,8 @@ class GameActivity : SDLActivity() {
 
     private var prefs: SharedPreferences? = null
 
-    val layout: RelativeLayout
-        get() = SDLActivity.mLayout as RelativeLayout
+    val layout: RelativeLayout?
+        get() = SDLActivity.mLayout as? RelativeLayout
 
     /**
      * loadLibraries() — uses OMW-ONLINE2 library loading sequence which matches the
@@ -176,24 +176,30 @@ class GameActivity : SDLActivity() {
 
     // NavMesh progress bar from openmw-android-Build
     private fun showProgressBar() {
+        val currentLayout = layout
+        if (currentLayout == null) {
+            Log.e("OpenMW", "showProgressBar: mLayout is null, cannot show progress bar")
+            return
+        }
+
         val dm = DisplayMetrics()
         windowManager.defaultDisplay.getRealMetrics(dm)
 
-        val progressBarBackground = ImageView(layout.context)
+        val progressBarBackground = ImageView(currentLayout.context)
         progressBarBackground.setImageResource(R.drawable.progressbarbackground)
         progressBarBackground.setScaleType(ImageView.ScaleType.FIT_XY)
         progressBarBackground.setX(((dm.widthPixels / 2) - 405).toFloat())
         progressBarBackground.setY(((dm.heightPixels / 2) - 105).toFloat())
-        layout.addView(progressBarBackground)
+        currentLayout.addView(progressBarBackground)
         progressBarBackground.getLayoutParams().width = 810
         progressBarBackground.getLayoutParams().height = 60
 
-        val progressBar = ImageView(layout.context)
+        val progressBar = ImageView(currentLayout.context)
         progressBar.setImageResource(R.drawable.progressbar)
         progressBar.setScaleType(ImageView.ScaleType.FIT_XY)
         progressBar.setX(((dm.widthPixels / 2) - 400).toFloat())
         progressBar.setY(((dm.heightPixels / 2) - 100).toFloat())
-        layout.addView(progressBar)
+        currentLayout.addView(progressBar)
         progressBar.getLayoutParams().width = 0
         progressBar.getLayoutParams().height = 50
 
@@ -205,12 +211,12 @@ class GameActivity : SDLActivity() {
         text.setX(((dm.widthPixels / 2) - (bounds.width() / 2)).toFloat())
         text.setY(((dm.heightPixels / 2) - 200).toFloat())
         text.setTypeface(null, Typeface.BOLD)
-        layout.addView(text)
+        currentLayout.addView(text)
 
         val percentageText = TextView(this)
         percentageText.setX((dm.widthPixels / 2).toFloat())
         percentageText.setY(((dm.heightPixels / 2) + 50).toFloat())
-        layout.addView(percentageText)
+        currentLayout.addView(percentageText)
 
         Os.setenv("NAVMESHTOOL_MESSAGE", "0.0", true)
         ProgressBarUpdater(percentageText, progressBar, dm.widthPixels, dm.heightPixels).execute()
@@ -238,6 +244,12 @@ class GameActivity : SDLActivity() {
 
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // If native libraries failed to load, SDLActivity shows an error dialog
+        // and does NOT create mLayout. We must not proceed.
+        if (SDLActivity.mBrokenLibraries) {
+            return
+        }
 
         // Display cutout handling from openmw-android-Build
         val displayInCutoutArea = PreferenceManager.getDefaultSharedPreferences(this).getBoolean("pref_display_cutout_area", true)
@@ -267,9 +279,13 @@ class GameActivity : SDLActivity() {
         val pref_hide_controls = prefs.getBoolean(Constants.HIDE_CONTROLS, false)
         var osc: Osc? = null
         if (!pref_hide_controls) {
-            val layout = layout
-            osc = Osc()
-            osc.placeElements(layout)
+            val currentLayout = layout
+            if (currentLayout != null) {
+                osc = Osc()
+                osc.placeElements(currentLayout)
+            } else {
+                Log.e("OpenMW", "showControls: mLayout is null, cannot place OSC controls")
+            }
         }
         MouseCursor(this, osc)
     }

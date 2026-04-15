@@ -195,7 +195,8 @@ rm -rf ../app/src/main/jniLibs/$ABI/
 mkdir -p ../app/src/main/jniLibs/$ABI/
 
 # libopenmw.so is a special case
-find build/$ARCH/tes3mp-prefix/ -iname "libtes3mp.so" -exec cp "{}" ../app/src/main/jniLibs/$ABI/libtes3mp.so \;
+# TES3MP builds as libtes3mp.so, rename to libopenmw.so for the Java launcher
+find build/$ARCH/tes3mp-prefix/ -iname "libtes3mp.so" -exec cp "{}" ../app/src/main/jniLibs/$ABI/libopenmw.so \;
 
 # copy over libs we compiled
 cp prefix/$ARCH/lib/{libopenal,libSDL2,libGL}.so ../app/src/main/jniLibs/$ABI/
@@ -243,7 +244,7 @@ cp "./build/$ARCH/sdl2-prefix/src/sdl2-build/libSDL2.so" "./symbols/$ABI/"
 if [ -f "./build/$ARCH/sdl2-prefix/src/sdl2-build/libhidapi.so" ]; then
 	cp "./build/$ARCH/sdl2-prefix/src/sdl2-build/libhidapi.so" "./symbols/$ABI/"
 fi
-cp "./build/$ARCH/tes3mp-prefix/src/tes3mp-build/libtes3mp.so" "./symbols/$ABI/libtes3mp.so"
+cp "./build/$ARCH/tes3mp-prefix/src/tes3mp-build/libtes3mp.so" "./symbols/$ABI/libopenmw.so"
 cp "./build/$ARCH/gl4es-prefix/src/gl4es-build/obj/local/$ABI/libGL.so" "./symbols/$ABI/"
 cp "../app/src/main/jniLibs/$ABI/libc++_shared.so" "./symbols/$ABI/"
 
