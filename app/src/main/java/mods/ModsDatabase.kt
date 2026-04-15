@@ -24,7 +24,7 @@ import android.database.sqlite.SQLiteDatabase
 // Anko removed - using AnkoCompat.kt in same package
 
 class ModsDatabaseOpenHelper private constructor(ctx: Context)
-    : ManagedSQLiteOpenHelper(ctx, "ModsDatabase", null, 1) {
+    : ManagedSQLiteOpenHelper(ctx, "ModsDatabase", null, 2) {
 
     init {
         instance = this
@@ -52,6 +52,12 @@ class ModsDatabaseOpenHelper private constructor(ctx: Context)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion < 2) {
+            // v2: BSA auto-discovery + groundcover auto-detection
+            // Drop and recreate so all BSAs and groundcovers are rediscovered
+            db.execSQL("DROP TABLE IF EXISTS mod")
+            onCreate(db)
+        }
     }
 }
 

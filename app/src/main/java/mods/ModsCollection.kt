@@ -34,52 +34,141 @@ class ModsCollection(private val type: ModType,
     constructor(type: ModType, dataFiles: String, db: ModsDatabaseOpenHelper) : this(type, listOf(dataFiles), db)
 
     val mods = arrayListOf<Mod>()
-    private var extensions: Array<String> = if (type == ModType.Resource)
-        arrayOf("bsa")
-    else if (type == ModType.Groundcover)
-        arrayOf("esp")
-    else
-        arrayOf("esm", "esp", "omwaddon", "omwgame")
+    private var extensions: Array<String> = when (type) {
+        ModType.Resource -> arrayOf("bsa")
+        ModType.Groundcover -> arrayOf("esp", "omwaddon")
+        ModType.Plugin -> arrayOf("esm", "esp", "omwaddon", "omwgame")
+    }
+
+    companion object {
+        /** Vanilla BSAs that must always load first, in this exact order */
+        private val PRIORITY_BSA = listOf("Morrowind.bsa", "Tribunal.bsa", "Bloodmoon.bsa")
+
+        /** Vanilla ESMs that must always load first, in this exact order */
+        private val PRIORITY_ESM = listOf("Morrowind.esm", "Tribunal.esm", "Bloodmoon.esm")
+
+        /** Substrings (lowercase) that mark a plugin as groundcover */
+        private val GROUNDCOVER_KEYWORDS = listOf("grass", "groundcover")
+    }
 
     init {
-        if (isEmpty())
+        if (isEmptyForType())
             initDb()
         syncWithFs()
         // The database might have become empty (e.g. if user deletes all mods) after the FS sync
-        if (isEmpty())
+        if (isEmptyForType())
             initDb()
     }
 
     /**
-     * Checks if the mod DB is empty, i.e. no mods defined yet. This can happen for example
-     * on first startup
-     * @return True if the DB doesn't have any mods
+     * Checks if the mod DB is empty FOR THIS TYPE.
+     * Previous version checked the entire table which caused Resource/Groundcover
+     * init to be skipped if Plugins already existed.
      */
-    private fun isEmpty(): Boolean {
+    private fun isEmptyForType(): Boolean {
         var count = 0
         db.use {
-            count = select("mod", "count(1)").exec {
-                parseSingle(IntParser)
-            }
+            count = select("mod", "count(1)")
+                .whereArgs("type = {type}", "type" to type.v)
+                .exec {
+                    parseSingle(IntParser)
+                }
         }
         return count == 0
     }
 
     /**
-     * Inserts built-in mods into the database, in proper order.
-     * Also checks to make sure only installed mods are inserted.
+     * Inserts mods into the database on first run:
+     * - Plugins: Morrowind/Tribunal/Bloodmoon ESMs (enabled)
+     * - Resources: priority BSAs first, then ALL other BSAs alphabetically (all enabled)
+     * - Groundcover: all files with grass/groundcover in name auto-enabled
      */
     private fun initDb() {
-        val builtIn = arrayOf("Morrowind", "Tribunal", "Bloodmoon")
-        initDbMods(builtIn.map { "$it.esm" }, ModType.Plugin)
-        initDbMods(builtIn.map { "$it.bsa" }, ModType.Resource)
+        when (type) {
+            ModType.Plugin -> {
+                initDbMods(PRIORITY_ESM, ModType.Plugin)
+            }
+            ModType.Resource -> {
+                initDbMods(PRIORITY_BSA, ModType.Resource)
+                initDbAllBsaFromDisk()
+            }
+            ModType.Groundcover -> {
+                initDbGroundcoverFromDisk()
+            }
+        }
     }
 
     /**
-     * Inserts built-in mods of a specific mod type. All of the built-in mods will be enabled
-     * by default.
-     * @param files Filenames of the mods, including extensions
-     * @param type Type of the mods (plugins/resources)
+     * Discovers all .bsa files on disk NOT in the priority list,
+     * sorts alphabetically, inserts all as enabled.
+     */
+    private fun initDbAllBsaFromDisk() {
+        val prioritySet = PRIORITY_BSA.map { it.lowercase() }.toSet()
+
+        val allBsa = dataPaths
+            .asSequence()
+            .filter { it.isNotBlank() }
+            .map { File(it) }
+            .filter { it.exists() && it.isDirectory }
+            .flatMap { dir -> dir.listFiles()?.asSequence() ?: emptySequence() }
+            .filter { it.extension.lowercase() == "bsa" }
+            .map { it.name }
+            .distinct()
+            .filter { it.lowercase() !in prioritySet }
+            .sorted()
+            .toList()
+
+        if (allBsa.isEmpty()) return
+
+        var maxOrder = 0
+        db.use {
+            maxOrder = try {
+                select("mod", "MAX(load_order)")
+                    .whereArgs("type = {type}", "type" to ModType.Resource.v)
+                    .exec { parseSingle(IntParser) }
+            } catch (e: Exception) { 0 }
+        }
+
+        db.use {
+            allBsa.forEach { bsaName ->
+                maxOrder += 1
+                Mod(ModType.Resource, bsaName, maxOrder, true).insert(this)
+            }
+        }
+    }
+
+    /**
+     * Discovers all groundcover-eligible files (.esp, .omwaddon) from disk.
+     * Files containing "grass" or "groundcover" (case-insensitive) auto-enabled.
+     */
+    private fun initDbGroundcoverFromDisk() {
+        val groundcoverFiles = dataPaths
+            .asSequence()
+            .filter { it.isNotBlank() }
+            .map { File(it) }
+            .filter { it.exists() && it.isDirectory }
+            .flatMap { dir -> dir.listFiles()?.asSequence() ?: emptySequence() }
+            .filter { extensions.contains(it.extension.lowercase()) }
+            .map { it.name }
+            .distinct()
+            .sorted()
+            .toList()
+
+        if (groundcoverFiles.isEmpty()) return
+
+        db.use {
+            var order = 0
+            groundcoverFiles.forEach { filename ->
+                order += 1
+                val nameLower = filename.lowercase()
+                val isGroundcover = GROUNDCOVER_KEYWORDS.any { kw -> nameLower.contains(kw) }
+                Mod(ModType.Groundcover, filename, order, isGroundcover).insert(this)
+            }
+        }
+    }
+
+    /**
+     * Inserts specific mods by filename. Only inserts mods that exist on disk.
      */
     private fun initDbMods(files: List<String>, type: ModType) {
         db.use {
@@ -93,13 +182,11 @@ class ModsCollection(private val type: ModType,
     }
 
     /**
-     * Synchronizes state of mods in database with the actual mod files on disk
-     * This could result in it deleting or adding mods to the database.
+     * Synchronizes state of mods in database with the actual mod files on disk.
      */
     private fun syncWithFs() {
         var dbMods = listOf<Mod>()
 
-        // Get mods from the database
         db.use {
             select("mod", "type", "filename", "load_order", "enabled")
                 .whereArgs("type = {type}", "type" to type.v).exec {
@@ -107,73 +194,61 @@ class ModsCollection(private val type: ModType,
                 }
         }
 
-        // Get file names matching the extensions
         val modFiles = dataPaths
             .asSequence()
             .filter { it.isNotBlank() }
             .map { File(it) }
             .filter { it.exists() && it.isDirectory }
             .flatMap { dir -> dir.listFiles()?.asSequence() ?: emptySequence() }
-            .filter { extensions.contains(it.extension.toLowerCase()) }
+            .filter { extensions.contains(it.extension.lowercase()) }
             .toList()
 
-        // Collect filenames of mods on the FS
         val fsNames = mutableSetOf<String>()
-        modFiles?.forEach {
-            fsNames.add(it.name)
-        }
+        modFiles.forEach { fsNames.add(it.name) }
 
-        // Collect filenames of mods in the DB
         val dbNames = mutableSetOf<String>()
-        dbMods.forEach {
-            dbNames.add(it.filename)
-        }
+        dbMods.forEach { dbNames.add(it.filename) }
 
-        // Get mods which are both in DB and on FS
-        dbMods.filter { fsNames.contains(it.filename) }.forEach {
-            mods.add(it)
-        }
+        dbMods.filter { fsNames.contains(it.filename) }.forEach { mods.add(it) }
 
-        // Figure current maximum order, new mods will be pushed below it
-        var maxOrder = mods.maxBy { it.order }?.order ?: 0
+        var maxOrder = mods.maxByOrNull { it.order }?.order ?: 0
 
-        // Create an entry for each mod that's on FS but not in DB and assign proper order
         val newMods = arrayListOf<Mod>()
-        (fsNames - dbNames).forEach {
+        (fsNames - dbNames).sorted().forEach {
             maxOrder += 1
-            val mod = Mod(type, it, maxOrder, false)
+            // New BSAs auto-enable; new groundcovers auto-enable if name matches keywords
+            val autoEnable = when (type) {
+                ModType.Resource -> true
+                ModType.Groundcover -> {
+                    val nameLower = it.lowercase()
+                    GROUNDCOVER_KEYWORDS.any { kw -> nameLower.contains(kw) }
+                }
+                else -> false
+            }
+            val mod = Mod(type, it, maxOrder, autoEnable)
             newMods.add(mod)
             mods.add(mod)
         }
 
-        // Commit changes to the database
         db.use {
             transaction {
-                // Delete all mods which are in db but not on fs
                 (dbNames - fsNames).forEach {
                     delete("mod",
                         "type = {type} AND filename = {filename}",
                         "type" to type.v,
                         "filename" to it)
                 }
-
-                // Create all mods which are on fs but not in db
                 newMods.forEach { it.insert(this) }
             }
         }
 
-        // Sort the mods in order
         mods.sortBy { it.order }
     }
-
 
     private fun primaryDataPath(): String {
         return dataPaths.firstOrNull { it.isNotBlank() } ?: ""
     }
 
-    /**
-     * Performs DB updates for all mods marked as dirty
-     */
     fun update() {
         db.use {
             mods.filter { it.dirty }.forEach {

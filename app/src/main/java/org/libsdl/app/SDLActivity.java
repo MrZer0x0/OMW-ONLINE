@@ -1873,7 +1873,11 @@ class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
         SDLActivity.onNativeSurfaceCreated();
         holder.setType(SurfaceHolder.SURFACE_TYPE_GPU);
 
-        SDLActivity.omwSurfaceRecreated();
+        try {
+            SDLActivity.omwSurfaceRecreated();
+        } catch (UnsatisfiedLinkError e) {
+            Log.w("SDL", "omwSurfaceRecreated not found in native lib, skipping");
+        }
     }
 
     // Called when we lose the surface
@@ -1888,7 +1892,11 @@ class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
         mIsSurfaceReady = false;
         SDLActivity.onNativeSurfaceDestroyed();
 
-        SDLActivity.omwSurfaceDestroyed();
+        try {
+            SDLActivity.omwSurfaceDestroyed();
+        } catch (UnsatisfiedLinkError e) {
+            Log.w("SDL", "omwSurfaceDestroyed not found in native lib, skipping");
+        }
     }
 
     // Called when the surface is resized
