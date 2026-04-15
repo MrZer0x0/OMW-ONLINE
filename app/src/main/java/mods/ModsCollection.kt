@@ -28,8 +28,10 @@ import java.io.File
  * @param dataFiles Path to the directory of the mods (the Data Files directory)
  */
 class ModsCollection(private val type: ModType,
-                     private val dataFiles: String,
+                     private val dataPaths: List<String>,
                      private val db: ModsDatabaseOpenHelper) {
+
+    constructor(type: ModType, dataFiles: String, db: ModsDatabaseOpenHelper) : this(type, listOf(dataFiles), db)
 
     val mods = arrayListOf<Mod>()
     private var extensions: Array<String> = if (type == ModType.Resource)
@@ -83,7 +85,7 @@ class ModsCollection(private val type: ModType,
         db.use {
             var order = 0
             files
-                .map { File(dataFiles, it) }
+                .map { File(primaryDataPath(), it) }
                 .filter { it.exists() }
                 .map { order += 1; Mod(type, it.name, order, true) }
                 .forEach { it.insert(this) }
@@ -106,9 +108,14 @@ class ModsCollection(private val type: ModType,
         }
 
         // Get file names matching the extensions
-        val modFiles = File(dataFiles).listFiles()?.filter {
-            extensions.contains(it.extension.toLowerCase())
-        }
+        val modFiles = dataPaths
+            .asSequence()
+            .filter { it.isNotBlank() }
+            .map { File(it) }
+            .filter { it.exists() && it.isDirectory }
+            .flatMap { dir -> dir.listFiles()?.asSequence() ?: emptySequence() }
+            .filter { extensions.contains(it.extension.toLowerCase()) }
+            .toList()
 
         // Collect filenames of mods on the FS
         val fsNames = mutableSetOf<String>()
@@ -157,6 +164,11 @@ class ModsCollection(private val type: ModType,
 
         // Sort the mods in order
         mods.sortBy { it.order }
+    }
+
+
+    private fun primaryDataPath(): String {
+        return dataPaths.firstOrNull { it.isNotBlank() } ?: ""
     }
 
     /**

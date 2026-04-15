@@ -4,9 +4,10 @@
     <color name="colorPrimaryDark">#0A0907</color>
     <color name="colorAccent">#E4C487</color>
 
-    <color name="modItemBackgroundColor">#1B1A15</color>
-    <color name="modItemSelectedColor">#2A2720</color>
-    <color name="modItemTextColor">#EAD8B0</color>
+    <color name="modItemBackgroundColor">#201D17</color>
+    <color name="modItemSelectedColor">#332E23</color>
+    <color name="modItemStrokeColor">#4A4130</color>
+    <color name="modItemTextColor">#F2E2BC</color>
 
     <color name="statusBarColor">#0A0907</color>
 

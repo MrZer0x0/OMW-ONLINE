@@ -24,6 +24,8 @@ import com.libopenmw.openmw.R
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import com.google.android.material.tabs.TabLayout
+import android.preference.PreferenceManager
+import java.io.File
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -44,10 +46,13 @@ class ModsActivity : AppCompatActivity() {
         // Enable the "back" icon in the action bar
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
+        updateToolbarSubtitle(0)
+
         // Switch tabs between plugins/resources
         tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) {
                 flipper.displayedChild = tab.position
+                updateToolbarSubtitle(tab.position)
             }
 
             override fun onTabUnselected(tab: TabLayout.Tab) {
@@ -63,20 +68,46 @@ class ModsActivity : AppCompatActivity() {
         setupModList(findViewById(R.id.list_groundcovers), ModType.Groundcover)
     }
 
+
+    private fun getAdditionalModDataDirs(): List<String> {
+        val modsDir = PreferenceManager.getDefaultSharedPreferences(this)
+            .getString("mods_dir", "")!!
+
+        if (modsDir.isBlank()) {
+            return emptyList()
+        }
+
+        return File(modsDir).listFiles()
+            ?.filter { it.isDirectory }
+            ?.map { it.absolutePath }
+            ?.sorted()
+            ?: emptyList()
+    }
+
+    private fun updateToolbarSubtitle(tabPosition: Int) {
+        val subtitle = when (tabPosition) {
+            0 -> getString(R.string.tab_plugins)
+            1 -> getString(R.string.tab_resources)
+            else -> getString(R.string.tab_groundcover)
+        }
+        supportActionBar?.subtitle = subtitle
+    }
+
     /**
      * Connects a user-interface RecyclerView to underlying mod data on the disk
      * @param list The list displayed to the user
      * @param type Type of the mods this list will contain
      */
     private fun setupModList(list: RecyclerView, type: ModType) {
-        val dataFiles = GameInstaller.getDataFiles(this)
+        val dataPaths = mutableListOf(GameInstaller.getDataFiles(this))
+        dataPaths.addAll(getAdditionalModDataDirs())
 
         val linearLayoutManager = LinearLayoutManager(this)
         linearLayoutManager.orientation = RecyclerView.VERTICAL
         list.layoutManager = linearLayoutManager
 
-        // Set up the adapter using the specified ModsCollection
-        val adapter = ModsAdapter(ModsCollection(type, dataFiles, database))
+        // Set up the adapter using all configured mod directories
+        val adapter = ModsAdapter(ModsCollection(type, dataPaths.distinct(), database))
 
         // Set up the drag-and-drop callback
         val callback = ModMoveCallback(adapter)

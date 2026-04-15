@@ -7,14 +7,15 @@
     <color name="launcherBackground">#14130F</color>
     <color name="launcherSurface">#1B1A15</color>
     <color name="launcherSurfaceStrong">#232119</color>
+    <color name="launcherOutline">#3D3629</color>
     <color name="launcherMutedText">#A89A7A</color>
     <color name="launcherRipple">#33E4C487</color>
     <color name="modSurface">#1A1914</color>
 
-    <color name="modItemBackgroundColor">#1B1A15</color>
-    <color name="modItemSelectedColor">#2E2A20</color>
-    <color name="modItemStrokeColor">#3F382A</color>
-    <color name="modItemTextColor">#EAD8B0</color>
+    <color name="modItemBackgroundColor">#201D17</color>
+    <color name="modItemSelectedColor">#332E23</color>
+    <color name="modItemStrokeColor">#4A4130</color>
+    <color name="modItemTextColor">#F2E2BC</color>
 
     <color name="statusBarColor">#0A0907</color>
 
