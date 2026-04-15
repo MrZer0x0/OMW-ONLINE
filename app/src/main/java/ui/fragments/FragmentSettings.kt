@@ -21,21 +21,19 @@
 package ui.fragments
 
 import android.Manifest
+import android.app.AlertDialog
 import android.content.DialogInterface
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener
 import android.content.pm.PackageManager
-import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.os.Build.VERSION
 import android.preference.EditTextPreference
 import android.preference.Preference
 import android.preference.PreferenceFragment
 import android.preference.PreferenceGroup
-import android.widget.ListView
 import androidx.core.content.ContextCompat
-import androidx.appcompat.app.AlertDialog
 
 import com.codekidlabs.storagechooser.StorageChooser
 import com.libopenmw.openmw.R
@@ -113,19 +111,6 @@ class FragmentSettings : PreferenceFragment(), OnSharedPreferenceChangeListener 
         }
     }
 
-
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        super.onActivityCreated(savedInstanceState)
-
-        val settingsList = view?.findViewById<ListView>(android.R.id.list) ?: return
-        settingsList.setBackgroundColor(resources.getColor(R.color.launcherSurface))
-        settingsList.divider = ColorDrawable(resources.getColor(R.color.launcherDivider))
-        settingsList.dividerHeight = 1
-        val pad = (12 * resources.displayMetrics.density).toInt()
-        settingsList.setPadding(pad, pad, pad, pad)
-        settingsList.clipToPadding = false
-    }
-
     /**
      * Checks the specified path for a valid morrowind installation, generates config files
      * and saves the path to shared prefs if it's valid.
@@ -150,8 +135,16 @@ class FragmentSettings : PreferenceFragment(), OnSharedPreferenceChangeListener 
 
         with(sharedPref.edit()) {
             putString("game_files", gameFiles)
-            if (sharedPref.getString("mods_dir", "")!! == "")
-                putString("mods_dir", gameFiles + "/")
+            if (gameFiles.isNotBlank()) {
+                val defaultModsDir = File(gameFiles, "Mods")
+                if (!defaultModsDir.exists()) {
+                    defaultModsDir.mkdirs()
+                }
+                val currentModsDir = sharedPref.getString("mods_dir", "") ?: ""
+                if (currentModsDir.isBlank() || currentModsDir == "$gameFiles/") {
+                    putString("mods_dir", defaultModsDir.absolutePath)
+                }
+            }
             apply()
         }
     }

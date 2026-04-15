@@ -310,9 +310,28 @@ class GameActivity : SDLActivity() {
     }
 
     override fun getArguments(): Array<String> {
-        val cmd = PreferenceManager.getDefaultSharedPreferences(this).getString("commandLine", "")
-        val commandlineParser = CommandlineParser("--resources " + Constants.USER_FILE_STORAGE + "/resources " + cmd!!)
-        return commandlineParser.argv
+        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        val cmd = prefs.getString("commandLine", "") ?: ""
+        val gamePath = prefs.getString("game_files", "") ?: ""
+        val dataPath = if (gamePath.isBlank()) "" else file.GameInstaller(gamePath).findDataFiles()
+
+        val args = arrayListOf(
+            "openmw",
+            "--resources", Constants.USER_FILE_STORAGE + "/resources",
+            "--config", Constants.OPENMW_CFG,
+            "--user-data", Constants.USER_FILE_STORAGE
+        )
+
+        if (dataPath.isNotBlank()) {
+            args.add("--data")
+            args.add(dataPath)
+        }
+
+        if (cmd.isNotBlank()) {
+            args.addAll(CommandlineParser(cmd).argv.drop(1))
+        }
+
+        return args.toTypedArray()
     }
 
     // IMPORTANT: Only uncomment this if using Docent27's native libs that export getPathToJni

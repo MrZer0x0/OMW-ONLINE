@@ -20,7 +20,6 @@
 package mods
 
 import android.database.sqlite.SQLiteDatabase
-// Anko removed - using AnkoCompat.kt in same package
 
 enum class ModType(val v: Int) {
     Plugin(1),
@@ -35,37 +34,35 @@ enum class ModType(val v: Int) {
 
 /**
  * Representation of a single mod in the database
- * @param type Type of the mod: plugin or resource
- * @param filename Filename of the mod, without the path
- * @param order Load order, or order in the list
- * @param enabled Whether the mod is enabled
  */
-class Mod(val type: ModType, val filename: String, var order: Int, var enabled: Boolean) {
+class Mod(
+    val type: ModType,
+    val filename: String,
+    val sourcePath: String,
+    val fullPath: String,
+    var order: Int,
+    var enabled: Boolean
+) {
 
-    /// Set to true when DB update is needed to keep consistency
     var dirty: Boolean = false
 
-    /**
-     * Updates the representation of this mod in the database
-     * @param db Database connection
-     */
     fun update(db: SQLiteDatabase) {
         db.update("mod",
             "load_order" to order,
-            "enabled" to enabled)
-            .whereArgs("filename = {filename} AND type = {type}",
+            "enabled" to enabled,
+            "full_path" to fullPath)
+            .whereArgs("filename = {filename} AND type = {type} AND source_path = {source_path}",
                 "filename" to filename,
-                "type" to type.v).exec()
+                "type" to type.v,
+                "source_path" to sourcePath).exec()
     }
 
-    /**
-     * Inserts this mod into the database
-     * @param db Database connection
-     */
     fun insert(db: SQLiteDatabase) {
         db.insert("mod",
             "type" to type.v,
             "filename" to filename,
+            "source_path" to sourcePath,
+            "full_path" to fullPath,
             "load_order" to order,
             "enabled" to (if (enabled) 1 else 0))
     }
@@ -76,7 +73,9 @@ class ModRowParser : RowParser<Mod> {
         return Mod(
             ModType.valueFrom((columns[0] as Long).toInt()),
             columns[1] as String,
-            (columns[2] as Long).toInt(),
-            (columns[3] as Long) != 0L)
+            (columns[2] as? String) ?: "",
+            (columns[3] as? String) ?: "",
+            (columns[4] as Long).toInt(),
+            (columns[5] as Long) != 0L)
     }
 }

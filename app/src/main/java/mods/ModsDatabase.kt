@@ -21,10 +21,9 @@ package mods
 
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
-// Anko removed - using AnkoCompat.kt in same package
 
 class ModsDatabaseOpenHelper private constructor(ctx: Context)
-    : ManagedSQLiteOpenHelper(ctx, "ModsDatabase", null, 2) {
+    : ManagedSQLiteOpenHelper(ctx, "ModsDatabase", null, 3) {
 
     init {
         instance = this
@@ -41,26 +40,24 @@ class ModsDatabaseOpenHelper private constructor(ctx: Context)
         db.createTable("mod", true,
             "type" to INTEGER,
             "filename" to TEXT,
+            "source_path" to TEXT,
+            "full_path" to TEXT,
             "load_order" to INTEGER,
             "enabled" to INTEGER)
-        db.createIndex("mod_type", "mod", false, true,
-            "type")
-        db.createIndex("mod_filename", "mod", false, true,
-            "filename")
-        db.createIndex("mod_type_name", "mod", true, true,
-            "type", "filename")
+        db.createIndex("mod_type", "mod", false, true, "type")
+        db.createIndex("mod_filename", "mod", false, true, "filename")
+        db.createIndex("mod_source", "mod", false, true, "source_path")
+        db.createIndex("mod_type_source_name", "mod", true, true,
+            "type", "source_path", "filename")
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        if (oldVersion < 2) {
-            // v2: BSA auto-discovery + groundcover auto-detection
-            // Drop and recreate so all BSAs and groundcovers are rediscovered
+        if (oldVersion < 3) {
             db.execSQL("DROP TABLE IF EXISTS mod")
             onCreate(db)
         }
     }
 }
 
-// Access property for Context
 val Context.database: ModsDatabaseOpenHelper
     get() = ModsDatabaseOpenHelper.getInstance(this)

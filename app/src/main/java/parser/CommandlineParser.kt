@@ -20,9 +20,6 @@
 
 package parser
 
-import java.util.ArrayList
-import java.util.Collections
-
 class CommandlineParser(data: String) {
     private val args = ArrayList<String>()
     val argv: Array<String>
@@ -33,9 +30,42 @@ class CommandlineParser(data: String) {
     init {
         args.clear()
         args.add("openmw")
-        if (data.contains("--")) {
-            Collections.addAll(args, *data.split(" ".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray())
+        if (data.isNotBlank()) {
+            args.addAll(parseArgs(data))
         }
         argv = args.toTypedArray()
+    }
+
+    private fun parseArgs(input: String): List<String> {
+        val result = mutableListOf<String>()
+        val current = StringBuilder()
+        var inQuotes = false
+        var quoteChar = '\u0000'
+
+        fun flush() {
+            if (current.isNotEmpty()) {
+                result.add(current.toString())
+                current.setLength(0)
+            }
+        }
+
+        input.forEach { ch ->
+            when {
+                (ch == '"' || ch == ''') -> {
+                    if (!inQuotes) {
+                        inQuotes = true
+                        quoteChar = ch
+                    } else if (quoteChar == ch) {
+                        inQuotes = false
+                    } else {
+                        current.append(ch)
+                    }
+                }
+                ch.isWhitespace() && !inQuotes -> flush()
+                else -> current.append(ch)
+            }
+        }
+        flush()
+        return result
     }
 }

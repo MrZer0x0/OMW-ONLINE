@@ -22,6 +22,7 @@ package ui.activity
 
 import android.annotation.SuppressLint
 import android.app.AlarmManager
+import android.app.AlertDialog
 import android.app.PendingIntent
 import android.app.ProgressDialog
 import android.content.*
@@ -34,7 +35,6 @@ import android.system.Os
 import android.util.DisplayMetrics
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
 import android.util.Log
 import android.view.Menu
@@ -222,32 +222,41 @@ class MainActivity : AppCompatActivity() {
 
 
     private fun getAdditionalModDataDirs(): List<String> {
-        val modsDir = PreferenceManager.getDefaultSharedPreferences(this)
-            .getString("mods_dir", "")!!
+        val sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this)
+        val modsDir = sharedPrefs.getString("mods_dir", "") ?: ""
 
         if (modsDir.isBlank()) {
             return emptyList()
         }
 
-        return File(modsDir).listFiles()
+        val root = File(modsDir)
+        if (!root.exists() || !root.isDirectory) {
+            return emptyList()
+        }
+
+        val actualDirs = root.listFiles()
             ?.filter { it.isDirectory }
             ?.map { it.absolutePath }
-            ?.sorted()
             ?: emptyList()
+
+        val storedOrder = sharedPrefs.getString("mods_dir_order", "")
+            ?.split("|")
+            ?.filter { it.isNotBlank() }
+            ?: emptyList()
+
+        val ordered = storedOrder.filter { actualDirs.contains(it) }.toMutableList()
+        actualDirs.filter { !ordered.contains(it) }
+            .sortedBy { it.substringAfterLast(File.separator).toLowerCase(Locale.ROOT) }
+            .forEach { ordered.add(it) }
+
+        sharedPrefs.edit().putString("mods_dir_order", ordered.joinToString("|")).apply()
+        return ordered
     }
 
     private fun collectMods(type: ModType, db: ModsDatabaseOpenHelper): List<mods.Mod> {
-        val modsByFilename = linkedMapOf<String, mods.Mod>()
         val dataPaths = mutableListOf(GameInstaller.getDataFiles(this))
         dataPaths.addAll(getAdditionalModDataDirs())
-
-        dataPaths.forEach { path ->
-            ModsCollection(type, path, db).mods.forEach { mod ->
-                modsByFilename.putIfAbsent(mod.filename, mod)
-            }
-        }
-
-        return modsByFilename.values.sortedBy { it.order }
+        return ModsCollection(type, dataPaths.distinct(), db).mods.toList()
     }
 
     private fun logConfig() {
@@ -487,6 +496,7 @@ class MainActivity : AppCompatActivity() {
 
         val dialog = ProgressDialog.show(
             this, "", "Запуск OpenMW Mobile...", true)
+        dialog.setCancelable(false)
 
         val activity = this
 
@@ -503,14 +513,24 @@ class MainActivity : AppCompatActivity() {
                     removeResourceFiles()
                 }
 
-                val inst = GameInstaller(prefs.getString("game_files", "")!!)
+                val gameFiles = prefs.getString("game_files", "") ?: ""
+                val inst = GameInstaller(gameFiles)
+                if (!inst.check()) {
+                    throw IllegalStateException("Game files path is invalid: $gameFiles")
+                }
+                val dataFiles = inst.findDataFiles()
+                if (!File(dataFiles).exists()) {
+                    throw IllegalStateException("Data Files directory does not exist: $dataFiles")
+                }
 
-                inst.convertIni(prefs.getString("pref_encoding", GameInstaller.DEFAULT_CHARSET_PREF)!!)
+                if (!inst.convertIni(prefs.getString("pref_encoding", GameInstaller.DEFAULT_CHARSET_PREF)!!)) {
+                    throw IllegalStateException("Failed to convert Morrowind.ini to openmw fallback config")
+                }
 
                 generateOpenmwCfg()
 
                 file.Writer.write(Constants.OPENMW_CFG, "resources", Constants.RESOURCES)
-                file.Writer.write(Constants.OPENMW_CFG, "data", "\"" + inst.findDataFiles() + "\"")
+                file.Writer.write(Constants.OPENMW_CFG, "data", "\"" + dataFiles + "\"")
 
                 file.Writer.write(Constants.OPENMW_CFG, "encoding", prefs!!.getString("pref_encoding", GameInstaller.DEFAULT_CHARSET_PREF)!!)
 
@@ -619,11 +639,19 @@ class MainActivity : AppCompatActivity() {
 
                 runOnUiThread {
                     obtainFixedScreenResolution()
-                    dialog.hide()
+                    if (!isFinishing) {
+                        dialog.dismiss()
+                    }
                     runGame()
                 }
-            } catch (e: IOException) {
-                Log.e(TAG, "Невозможно записать файл настроек.", e)
+            } catch (e: Exception) {
+                Log.e(TAG, "Невозможно запустить игру.", e)
+                runOnUiThread {
+                    if (!isFinishing) {
+                        dialog.dismiss()
+                        Toast.makeText(this, e.message ?: "Ошибка запуска игры", Toast.LENGTH_LONG).show()
+                    }
+                }
             }
         }
         th.start()

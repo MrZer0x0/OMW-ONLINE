@@ -70,18 +70,35 @@ class ModsActivity : AppCompatActivity() {
 
 
     private fun getAdditionalModDataDirs(): List<String> {
-        val modsDir = PreferenceManager.getDefaultSharedPreferences(this)
-            .getString("mods_dir", "")!!
+        val sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this)
+        val modsDir = sharedPrefs.getString("mods_dir", "") ?: ""
 
         if (modsDir.isBlank()) {
             return emptyList()
         }
 
-        return File(modsDir).listFiles()
+        val root = File(modsDir)
+        if (!root.exists() || !root.isDirectory) {
+            return emptyList()
+        }
+
+        val actualDirs = root.listFiles()
             ?.filter { it.isDirectory }
             ?.map { it.absolutePath }
-            ?.sorted()
             ?: emptyList()
+
+        val storedOrder = sharedPrefs.getString("mods_dir_order", "")
+            ?.split("|")
+            ?.filter { it.isNotBlank() }
+            ?: emptyList()
+
+        val ordered = storedOrder.filter { actualDirs.contains(it) }.toMutableList()
+        actualDirs.filter { !ordered.contains(it) }
+            .sortedBy { it.substringAfterLast(File.separator).toLowerCase(java.util.Locale.ROOT) }
+            .forEach { ordered.add(it) }
+
+        sharedPrefs.edit().putString("mods_dir_order", ordered.joinToString("|")).apply()
+        return ordered
     }
 
     private fun updateToolbarSubtitle(tabPosition: Int) {

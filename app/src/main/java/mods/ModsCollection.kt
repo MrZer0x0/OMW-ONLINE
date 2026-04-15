@@ -19,15 +19,9 @@
 
 package mods
 
-// Anko removed - using AnkoCompat.kt in same package
 import java.io.File
 import java.util.Locale
 
-/**
- * Represents an ordered list of mods of a specific type
- * @param type Type of the mods represented by this collection, Plugin or Resource
- * @param dataFiles Path to the directory of the mods (the Data Files directory)
- */
 class ModsCollection(private val type: ModType,
                      private val dataPaths: List<String>,
                      private val db: ModsDatabaseOpenHelper) {
@@ -42,81 +36,55 @@ class ModsCollection(private val type: ModType,
     }
 
     companion object {
-        /** Vanilla BSAs that must always load first, in this exact order */
         private val PRIORITY_BSA = listOf("Morrowind.bsa", "Tribunal.bsa", "Bloodmoon.bsa")
-
-        /** Vanilla ESMs that must always load first, in this exact order */
         private val PRIORITY_ESM = listOf("Morrowind.esm", "Tribunal.esm", "Bloodmoon.esm")
-
-        /** Substrings (lowercase) that mark a plugin as groundcover */
         private val GROUNDCOVER_KEYWORDS = listOf("grass", "groundcover")
     }
 
     init {
-        if (isEmptyForType())
-            initDb()
+        if (isEmptyForType()) initDb()
         syncWithFs()
-        // The database might have become empty (e.g. if user deletes all mods) after the FS sync
-        if (isEmptyForType())
-            initDb()
+        if (isEmptyForType()) initDb()
     }
 
-    /**
-     * Checks if the mod DB is empty FOR THIS TYPE.
-     * Previous version checked the entire table which caused Resource/Groundcover
-     * init to be skipped if Plugins already existed.
-     */
+    private fun normalizedDataPaths(): List<String> {
+        return dataPaths.filter { it.isNotBlank() }.distinct()
+    }
+
     private fun isEmptyForType(): Boolean {
         var count = 0
         db.use {
             count = select("mod", "count(1)")
                 .whereArgs("type = {type}", "type" to type.v)
-                .exec {
-                    parseSingle(IntParser)
-                }
+                .exec { parseSingle(IntParser) }
         }
         return count == 0
     }
 
-    /**
-     * Inserts mods into the database on first run:
-     * - Plugins: Morrowind/Tribunal/Bloodmoon ESMs (enabled)
-     * - Resources: priority BSAs first, then ALL other BSAs alphabetically (all enabled)
-     * - Groundcover: all files with grass/groundcover in name auto-enabled
-     */
     private fun initDb() {
         when (type) {
-            ModType.Plugin -> {
-                initDbMods(PRIORITY_ESM, ModType.Plugin)
-            }
+            ModType.Plugin -> initDbMods(PRIORITY_ESM, ModType.Plugin)
             ModType.Resource -> {
                 initDbMods(PRIORITY_BSA, ModType.Resource)
                 initDbAllBsaFromDisk()
             }
-            ModType.Groundcover -> {
-                initDbGroundcoverFromDisk()
-            }
+            ModType.Groundcover -> initDbGroundcoverFromDisk()
         }
     }
 
-    /**
-     * Discovers all .bsa files on disk NOT in the priority list,
-     * sorts alphabetically, inserts all as enabled.
-     */
     private fun initDbAllBsaFromDisk() {
         val prioritySet = PRIORITY_BSA.map { it.toLowerCase(Locale.ROOT) }.toSet()
 
-        val allBsa = dataPaths
+        val allBsa = normalizedDataPaths()
             .asSequence()
-            .filter { it.isNotBlank() }
             .map { File(it) }
             .filter { it.exists() && it.isDirectory }
             .flatMap { dir -> dir.listFiles()?.asSequence() ?: emptySequence() }
             .filter { it.extension.toLowerCase(Locale.ROOT) == "bsa" }
-            .map { it.name }
-            .distinct()
-            .filter { it.toLowerCase(Locale.ROOT) !in prioritySet }
-            .sorted()
+            .map { it }
+            .distinctBy { it.absolutePath }
+            .filter { it.name.toLowerCase(Locale.ROOT) !in prioritySet }
+            .sortedBy { it.name.toLowerCase(Locale.ROOT) }
             .toList()
 
         if (allBsa.isEmpty()) return
@@ -131,123 +99,113 @@ class ModsCollection(private val type: ModType,
         }
 
         db.use {
-            allBsa.forEach { bsaName ->
+            allBsa.forEach { file ->
                 maxOrder += 1
-                Mod(ModType.Resource, bsaName, maxOrder, true).insert(this)
+                Mod(ModType.Resource, file.name, file.parent ?: "", file.absolutePath, maxOrder, true).insert(this)
             }
         }
     }
 
-    /**
-     * Discovers all groundcover-eligible files (.esp, .omwaddon) from disk.
-     * Files containing "grass" or "groundcover" (case-insensitive) auto-enabled.
-     */
     private fun initDbGroundcoverFromDisk() {
-        val groundcoverFiles = dataPaths
+        val files = normalizedDataPaths()
             .asSequence()
-            .filter { it.isNotBlank() }
             .map { File(it) }
             .filter { it.exists() && it.isDirectory }
             .flatMap { dir -> dir.listFiles()?.asSequence() ?: emptySequence() }
             .filter { extensions.contains(it.extension.toLowerCase(Locale.ROOT)) }
-            .map { it.name }
-            .distinct()
-            .sorted()
+            .distinctBy { it.absolutePath }
+            .sortedBy { it.name.toLowerCase(Locale.ROOT) }
             .toList()
 
-        if (groundcoverFiles.isEmpty()) return
+        if (files.isEmpty()) return
 
         db.use {
             var order = 0
-            groundcoverFiles.forEach { filename ->
+            files.forEach { file ->
                 order += 1
-                val nameLower = filename.toLowerCase(Locale.ROOT)
+                val nameLower = file.name.toLowerCase(Locale.ROOT)
                 val isGroundcover = GROUNDCOVER_KEYWORDS.any { kw -> nameLower.contains(kw) }
-                Mod(ModType.Groundcover, filename, order, isGroundcover).insert(this)
+                Mod(ModType.Groundcover, file.name, file.parent ?: "", file.absolutePath, order, isGroundcover).insert(this)
             }
         }
     }
 
-    /**
-     * Inserts specific mods by filename. Only inserts mods that exist on disk.
-     */
     private fun initDbMods(files: List<String>, type: ModType) {
         db.use {
             var order = 0
             files
-                .map { File(primaryDataPath(), it) }
-                .filter { it.exists() }
-                .map { order += 1; Mod(type, it.name, order, true) }
+                .mapNotNull { filename ->
+                    normalizedDataPaths()
+                        .map { File(it, filename) }
+                        .firstOrNull { it.exists() }
+                }
+                .map { order += 1; Mod(type, it.name, it.parent ?: "", it.absolutePath, order, true) }
                 .forEach { it.insert(this) }
         }
     }
 
-    /**
-     * Synchronizes state of mods in database with the actual mod files on disk.
-     */
     private fun syncWithFs() {
         var dbMods = listOf<Mod>()
 
         db.use {
-            select("mod", "type", "filename", "load_order", "enabled")
+            select("mod", "type", "filename", "source_path", "full_path", "load_order", "enabled")
                 .whereArgs("type = {type}", "type" to type.v).exec {
                     dbMods = parseList(ModRowParser())
                 }
         }
 
-        val modFiles = dataPaths
+        val fsMods = normalizedDataPaths()
             .asSequence()
-            .filter { it.isNotBlank() }
             .map { File(it) }
             .filter { it.exists() && it.isDirectory }
             .flatMap { dir -> dir.listFiles()?.asSequence() ?: emptySequence() }
             .filter { extensions.contains(it.extension.toLowerCase(Locale.ROOT)) }
+            .map { file ->
+                Mod(type, file.name, file.parent ?: "", file.absolutePath, 0, false)
+            }
+            .distinctBy { it.fullPath }
             .toList()
 
-        val fsNames = mutableSetOf<String>()
-        modFiles.forEach { fsNames.add(it.name) }
+        val fsKeys = fsMods.map { it.sourcePath + "|" + it.filename }.toSet()
+        val dbKeys = dbMods.map { it.sourcePath + "|" + it.filename }.toSet()
 
-        val dbNames = mutableSetOf<String>()
-        dbMods.forEach { dbNames.add(it.filename) }
+        dbMods.filter { fsKeys.contains(it.sourcePath + "|" + it.filename) }.forEach { mods.add(it) }
 
-        dbMods.filter { fsNames.contains(it.filename) }.forEach { mods.add(it) }
-
-        var maxOrder = (mods.maxBy { it.order }?.order ?: 0)
-
+        var maxOrder = mods.maxBy { it.order }?.order ?: 0
         val newMods = arrayListOf<Mod>()
-        (fsNames - dbNames).sorted().forEach {
-            maxOrder += 1
-            // New BSAs auto-enable; new groundcovers auto-enable if name matches keywords
-            val autoEnable = when (type) {
-                ModType.Resource -> true
-                ModType.Groundcover -> {
-                    val nameLower = it.toLowerCase(Locale.ROOT)
-                    GROUNDCOVER_KEYWORDS.any { kw -> nameLower.contains(kw) }
+        fsMods.filter { !dbKeys.contains(it.sourcePath + "|" + it.filename) }
+            .sortedWith(compareBy<Mod>({ pathOrder(it.sourcePath) }, { it.filename.toLowerCase(Locale.ROOT) }))
+            .forEach { mod ->
+                maxOrder += 1
+                val enabledByDefault = when (type) {
+                    ModType.Resource -> mod.filename in PRIORITY_BSA
+                    ModType.Plugin -> mod.filename in PRIORITY_ESM
+                    ModType.Groundcover -> GROUNDCOVER_KEYWORDS.any { mod.filename.toLowerCase(Locale.ROOT).contains(it) }
                 }
-                else -> false
+                val newMod = Mod(type, mod.filename, mod.sourcePath, mod.fullPath, maxOrder, enabledByDefault)
+                newMods.add(newMod)
+                mods.add(newMod)
             }
-            val mod = Mod(type, it, maxOrder, autoEnable)
-            newMods.add(mod)
-            mods.add(mod)
-        }
 
         db.use {
             transaction {
-                (dbNames - fsNames).forEach {
+                dbMods.filter { !fsKeys.contains(it.sourcePath + "|" + it.filename) }.forEach {
                     delete("mod",
-                        "type = {type} AND filename = {filename}",
+                        "type = {type} AND filename = {filename} AND source_path = {source_path}",
                         "type" to type.v,
-                        "filename" to it)
+                        "filename" to it.filename,
+                        "source_path" to it.sourcePath)
                 }
                 newMods.forEach { it.insert(this) }
             }
         }
 
-        mods.sortBy { it.order }
+        mods.sortWith(compareBy<Mod>({ pathOrder(it.sourcePath) }, { it.order }, { it.filename.toLowerCase(Locale.ROOT) }))
     }
 
-    private fun primaryDataPath(): String {
-        return dataPaths.firstOrNull { it.isNotBlank() } ?: ""
+    private fun pathOrder(sourcePath: String): Int {
+        val index = normalizedDataPaths().indexOf(sourcePath)
+        return if (index >= 0) index else Int.MAX_VALUE
     }
 
     fun update() {
