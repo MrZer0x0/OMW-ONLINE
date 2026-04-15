@@ -12,12 +12,12 @@
     android:focusable="true"
     android:foreground="?attr/selectableItemBackground"
     android:gravity="center_vertical"
-    android:minHeight="68dp"
+    android:minHeight="72dp"
     android:orientation="horizontal"
     android:paddingStart="12dp"
-    android:paddingTop="4dp"
+    android:paddingTop="6dp"
     android:paddingEnd="12dp"
-    android:paddingBottom="4dp"
+    android:paddingBottom="6dp"
     android:visibility="visible">
 
     <ImageView
@@ -25,7 +25,7 @@
         android:layout_width="42dp"
         android:layout_height="42dp"
         android:layout_gravity="center_vertical"
-        android:alpha="0.9"
+        android:alpha="0.92"
         android:padding="10dp"
         android:src="@drawable/ic_drag_handle_black_24dp"
         android:tint="@color/colorAccent" />
@@ -44,7 +44,7 @@
         android:text="Mod Name"
         android:textAlignment="viewStart"
         android:textColor="@color/modItemTextColor"
-        android:textSize="16sp" />
+        android:textSize="18sp" />
 
     <CheckBox
         android:id="@+id/modCheckbox"

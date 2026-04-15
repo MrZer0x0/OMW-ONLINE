@@ -1,41 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#0E0D09</color>
-    <color name="colorPrimaryDark">#0A0907</color>
+    <color name="colorPrimary">#0B0907</color>
+    <color name="colorPrimaryDark">#080705</color>
     <color name="colorAccent">#E4C487</color>
 
-    <color name="launcherBackground">#14130F</color>
-    <color name="launcherSurface">#1B1A15</color>
-    <color name="launcherSurfaceStrong">#232119</color>
-    <color name="launcherOutline">#3D3629</color>
-    <color name="launcherMutedText">#A89A7A</color>
+    <color name="launcherBackground">#0F0D0A</color>
+    <color name="launcherSurface">#16120E</color>
+    <color name="launcherSurfaceStrong">#201913</color>
+    <color name="launcherSurfaceElevated">#251D16</color>
+    <color name="launcherOutline">#5D4729</color>
+    <color name="launcherOutlineSoft">#3A2F20</color>
+    <color name="launcherTextPrimary">#F3E4C0</color>
+    <color name="launcherMutedText">#AE9D79</color>
+    <color name="launcherHint">#7D7158</color>
     <color name="launcherRipple">#33E4C487</color>
-    <color name="modSurface">#1A1914</color>
+    <color name="launcherDivider">#2A2118</color>
+    <color name="modSurface">#14100C</color>
 
-    <color name="modItemBackgroundColor">#201D17</color>
-    <color name="modItemSelectedColor">#332E23</color>
-    <color name="modItemStrokeColor">#4A4130</color>
-    <color name="modItemTextColor">#F2E2BC</color>
+    <color name="modItemBackgroundColor">#1D1711</color>
+    <color name="modItemSelectedColor">#2B2218</color>
+    <color name="modItemStrokeColor">#5A4527</color>
+    <color name="modItemTextColor">#F3E4C0</color>
 
-    <color name="statusBarColor">#0A0907</color>
+    <color name="statusBarColor">#080705</color>
+    <color name="navigationBarColor">#080705</color>
 
     <!-- Storage Chooser -->
     <array name="default_light">
-        <item>#0E0D09</item>
-        <item>#EAD8B0</item>
-        <item>#191814</item>
-        <item>#EAD8B0</item>
+        <item>#0B0907</item>
+        <item>#F0DFC0</item>
+        <item>#18130F</item>
+        <item>#F0DFC0</item>
         <item>#E4C487</item>
         <item>#7A7262</item>
 
         <item>#E4C487</item>
-        <item>#1B1A15</item>
-        <item>#EAD8B0</item>
-        <item>#EAD8B0</item>
+        <item>#1B1712</item>
+        <item>#F0DFC0</item>
+        <item>#F0DFC0</item>
         <item>@color/chevronBgColor</item>
         <item>#E4C487</item>
-        <item>#1B1A15</item>
+        <item>#1B1712</item>
         <item>#E4C487</item>
-        <item>#0E0D09</item>
+        <item>#0B0907</item>
     </array>
 </resources>

@@ -14,8 +14,8 @@
         android:layout_height="?attr/actionBarSize"
         android:background="@color/colorPrimary"
         android:elevation="8dp"
-        android:paddingStart="10dp"
-        android:paddingEnd="10dp"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
         android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
         app:popupTheme="@style/ThemeOverlay.AppCompat.Dark"
         app:subtitleTextColor="@color/launcherMutedText"
@@ -51,36 +51,45 @@
             android:text="@string/tab_groundcover" />
     </com.google.android.material.tabs.TabLayout>
 
-    <ViewFlipper
-        android:id="@+id/flipper"
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@drawable/launcher_panel_background"
-        android:paddingStart="8dp"
+        android:paddingStart="10dp"
         android:paddingTop="10dp"
-        android:paddingEnd="8dp"
-        android:paddingBottom="8dp">
+        android:paddingEnd="10dp"
+        android:paddingBottom="10dp">
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/list_mods"
+        <ViewFlipper
+            android:id="@+id/flipper"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:clipToPadding="false"
-            android:paddingBottom="10dp" />
+            android:background="@drawable/launcher_panel_background"
+            android:paddingStart="8dp"
+            android:paddingTop="10dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="8dp">
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/list_resources"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:clipToPadding="false"
-            android:paddingBottom="10dp" />
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/list_mods"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingBottom="10dp" />
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/list_groundcovers"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:clipToPadding="false"
-            android:paddingBottom="10dp" />
-    </ViewFlipper>
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/list_resources"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingBottom="10dp" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/list_groundcovers"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingBottom="10dp" />
+        </ViewFlipper>
+    </FrameLayout>
 
 </LinearLayout>

@@ -5,10 +5,19 @@
 
     <style name="MyActionBar" parent="@style/Widget.AppCompat.ActionBar.Solid">
         <item name="titleTextStyle">@style/MyTitleTextStyle</item>
+        <item name="subtitleTextStyle">@style/MySubtitleTextStyle</item>
+        <item name="android:background">@color/colorPrimary</item>
+        <item name="background">@color/colorPrimary</item>
+        <item name="elevation">8dp</item>
     </style>
 
     <style name="MyTitleTextStyle" parent="@style/TextAppearance.AppCompat.Widget.ActionBar.Title">
-        <item name="android:textColor">#FFE4C487</item>
+        <item name="android:textColor">@color/colorAccent</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="MySubtitleTextStyle" parent="@style/TextAppearance.AppCompat.Widget.ActionBar.Subtitle">
+        <item name="android:textColor">@color/launcherMutedText</item>
     </style>
 
     <style name="MyTheme.Base" parent="Theme.AppCompat.DayNight.NoActionBar">
@@ -18,15 +27,35 @@
         <item name="colorAccent">@color/colorAccent</item>
         <item name="actionBarStyle">@style/MyActionBar</item>
         <item name="android:statusBarColor">@color/statusBarColor</item>
-        <item name="android:navigationBarColor">#0A0907</item>
+        <item name="android:navigationBarColor">@color/navigationBarColor</item>
+        <item name="android:colorBackground">@color/launcherBackground</item>
+        <item name="android:textColorPrimary">@color/launcherTextPrimary</item>
+        <item name="android:textColorSecondary">@color/launcherMutedText</item>
+        <item name="android:textColorHint">@color/launcherHint</item>
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:listDivider">@android:color/transparent</item>
+        <item name="android:dialogTheme">@style/ProjectNirnDialogTheme</item>
+        <item name="android:alertDialogTheme">@style/ProjectNirnDialogTheme</item>
+        <item name="alertDialogTheme">@style/ProjectNirnDialogTheme</item>
+        <item name="android:editTextColor">@color/launcherTextPrimary</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:windowActionBarOverlay">false</item>
+    </style>
+
+    <style name="ProjectNirnDialogTheme" parent="Theme.AppCompat.Dialog.Alert">
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorAccent">@color/colorAccent</item>
+        <item name="android:background">@color/launcherSurfaceElevated</item>
+        <item name="android:textColorPrimary">@color/launcherTextPrimary</item>
+        <item name="android:textColorSecondary">@color/launcherMutedText</item>
     </style>
 
     <style name="MyCustomTextAppearance" parent="TextAppearance.Design.Tab">
         <item name="android:textAppearance">@style/CustomTabWidgetText</item>
     </style>
 
-    <style name="CustomTabWidgetText"
-        parent="@android:style/TextAppearance.Widget.TabWidget">
+    <style name="CustomTabWidgetText" parent="@android:style/TextAppearance.Widget.TabWidget">
         <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">bold</item>
     </style>
 </resources>

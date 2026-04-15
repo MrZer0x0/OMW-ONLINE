@@ -22,7 +22,6 @@ package ui.activity
 
 import android.annotation.SuppressLint
 import android.app.AlarmManager
-import android.app.AlertDialog
 import android.app.PendingIntent
 import android.app.ProgressDialog
 import android.content.*
@@ -35,6 +34,7 @@ import android.system.Os
 import android.util.DisplayMetrics
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
 import android.util.Log
 import android.view.Menu

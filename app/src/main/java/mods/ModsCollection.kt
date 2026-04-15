@@ -21,6 +21,7 @@ package mods
 
 // Anko removed - using AnkoCompat.kt in same package
 import java.io.File
+import java.util.Locale
 
 /**
  * Represents an ordered list of mods of a specific type
@@ -103,7 +104,7 @@ class ModsCollection(private val type: ModType,
      * sorts alphabetically, inserts all as enabled.
      */
     private fun initDbAllBsaFromDisk() {
-        val prioritySet = PRIORITY_BSA.map { it.lowercase() }.toSet()
+        val prioritySet = PRIORITY_BSA.map { it.toLowerCase(Locale.ROOT) }.toSet()
 
         val allBsa = dataPaths
             .asSequence()
@@ -111,10 +112,10 @@ class ModsCollection(private val type: ModType,
             .map { File(it) }
             .filter { it.exists() && it.isDirectory }
             .flatMap { dir -> dir.listFiles()?.asSequence() ?: emptySequence() }
-            .filter { it.extension.lowercase() == "bsa" }
+            .filter { it.extension.toLowerCase(Locale.ROOT) == "bsa" }
             .map { it.name }
             .distinct()
-            .filter { it.lowercase() !in prioritySet }
+            .filter { it.toLowerCase(Locale.ROOT) !in prioritySet }
             .sorted()
             .toList()
 
@@ -148,7 +149,7 @@ class ModsCollection(private val type: ModType,
             .map { File(it) }
             .filter { it.exists() && it.isDirectory }
             .flatMap { dir -> dir.listFiles()?.asSequence() ?: emptySequence() }
-            .filter { extensions.contains(it.extension.lowercase()) }
+            .filter { extensions.contains(it.extension.toLowerCase(Locale.ROOT)) }
             .map { it.name }
             .distinct()
             .sorted()
@@ -160,7 +161,7 @@ class ModsCollection(private val type: ModType,
             var order = 0
             groundcoverFiles.forEach { filename ->
                 order += 1
-                val nameLower = filename.lowercase()
+                val nameLower = filename.toLowerCase(Locale.ROOT)
                 val isGroundcover = GROUNDCOVER_KEYWORDS.any { kw -> nameLower.contains(kw) }
                 Mod(ModType.Groundcover, filename, order, isGroundcover).insert(this)
             }
@@ -200,7 +201,7 @@ class ModsCollection(private val type: ModType,
             .map { File(it) }
             .filter { it.exists() && it.isDirectory }
             .flatMap { dir -> dir.listFiles()?.asSequence() ?: emptySequence() }
-            .filter { extensions.contains(it.extension.lowercase()) }
+            .filter { extensions.contains(it.extension.toLowerCase(Locale.ROOT)) }
             .toList()
 
         val fsNames = mutableSetOf<String>()
@@ -211,7 +212,7 @@ class ModsCollection(private val type: ModType,
 
         dbMods.filter { fsNames.contains(it.filename) }.forEach { mods.add(it) }
 
-        var maxOrder = mods.maxByOrNull { it.order }?.order ?: 0
+        var maxOrder = (mods.maxBy { it.order }?.order ?: 0)
 
         val newMods = arrayListOf<Mod>()
         (fsNames - dbNames).sorted().forEach {
@@ -220,7 +221,7 @@ class ModsCollection(private val type: ModType,
             val autoEnable = when (type) {
                 ModType.Resource -> true
                 ModType.Groundcover -> {
-                    val nameLower = it.lowercase()
+                    val nameLower = it.toLowerCase(Locale.ROOT)
                     GROUNDCOVER_KEYWORDS.any { kw -> nameLower.contains(kw) }
                 }
                 else -> false

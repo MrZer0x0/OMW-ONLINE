@@ -21,12 +21,12 @@
 package ui.fragments
 
 import android.Manifest
-import android.app.AlertDialog
 import android.content.DialogInterface
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener
 import android.content.pm.PackageManager
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.os.Build.VERSION
 import android.preference.EditTextPreference
@@ -34,6 +34,7 @@ import android.preference.Preference
 import android.preference.PreferenceFragment
 import android.preference.PreferenceGroup
 import androidx.core.content.ContextCompat
+import androidx.appcompat.app.AlertDialog
 
 import com.codekidlabs.storagechooser.StorageChooser
 import com.libopenmw.openmw.R
@@ -109,6 +110,18 @@ class FragmentSettings : PreferenceFragment(), OnSharedPreferenceChangeListener 
         } catch (e: Exception) {
             // Preference may not exist in some settings.xml variants
         }
+    }
+
+
+    override fun onActivityCreated(savedInstanceState: Bundle?) {
+        super.onActivityCreated(savedInstanceState)
+
+        listView.setBackgroundColor(resources.getColor(R.color.launcherSurface))
+        listView.divider = ColorDrawable(resources.getColor(R.color.launcherDivider))
+        listView.dividerHeight = 1
+        val pad = (12 * resources.displayMetrics.density).toInt()
+        listView.setPadding(pad, pad, pad, pad)
+        listView.clipToPadding = false
     }
 
     /**
