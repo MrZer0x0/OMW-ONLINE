@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">OpenMW Mobile</string>
+    <string name="app_name">Project NIRN</string>
 
     <string-array name="pref_encoding_entries">
         <item>Центральная и Восточная Европа (win1250)</item>
@@ -73,7 +73,7 @@
     <string name="pref_avoid16bits">Избегать 16-битных цветов</string>
     <string name="mods">Моды…</string>
     <string name="action_about">О программе</string>
-    <string name="about_title">О OpenMW Mobile</string>
+    <string name="about_title">О лаунчере Project NIRN</string>
 
     <string name="action_theme">Тема</string>
     <string name="action_theme_system">Система</string>
@@ -85,7 +85,7 @@
     <string name="action_set_mods_dir">Установить пользовательскую директорию модов</string>
     <string name="action_mods_preset">Списки контента</string>
 
-    <string name="activity_mods">Моды</string>
+    <string name="activity_mods">Project NIRN</string>
     <string name="tab_plugins">Плагины</string>
     <string name="tab_resources">Ресурсы</string>
     <string name="tab_dirs">Директории</string>
@@ -139,19 +139,22 @@
     <string name="pref_always_show_top_bar">Всегда показывать иконки на верхней панели</string>
 
     <string name="theme">0</string>
+    <string name="launcher_title">Project NIRN</string>
+    <string name="launcher_subtitle">NIRN launcher</string>
+    <string name="mods_subtitle">Управление модами</string>
+    <string name="server_summary_hint">Введите полный аргумент, например: --connect 178.20.47.31:37777</string>
+
 
     <!-- Server selection from OMW-ONLINE2 -->
-    <string name="pref_server_select">Выбор сервера</string>
-    <string name="pref_server_select_default">--connect 89.223.65.44:33365</string>
+    <string name="pref_server_select">Сервер TES3MP</string>
+    <string name="pref_server_select_default">--connect 178.20.47.31:37777</string>
     <string-array name="pref_server_select_entries">
-        <item>AshesWind</item>
-        <item>Vanilla (test)</item>
-        <item>Другой</item>
+        <item>Project NIRN</item>
+        <item>Свой сервер</item>
     </string-array>
     <string-array name="pref_server_select_values">
-        <item>--connect 89.223.65.44:33365</item>
-        <item>--connect 47.222.179.199:25563</item>
-        <item></item>
+        <item>--connect 178.20.47.31:37777</item>
+        <item>--connect </item>
     </string-array>
 
     <!-- Debug level from OMW-ONLINE2 -->

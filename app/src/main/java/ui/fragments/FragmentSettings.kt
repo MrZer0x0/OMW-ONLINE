@@ -196,5 +196,9 @@ class FragmentSettings : PreferenceFragment(), OnSharedPreferenceChangeListener 
         if (key == "game_files") {
             preference.summary = preference.sharedPreferences.getString("game_files", "")
         }
+        if (key == "commandLine") {
+            val value = preference.sharedPreferences.getString("commandLine", getString(R.string.pref_server_select_default))
+            preference.summary = if (value.isNullOrBlank()) getString(R.string.server_summary_hint) else value
+        }
     }
 }

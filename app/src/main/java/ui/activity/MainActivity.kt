@@ -99,6 +99,8 @@ class MainActivity : AppCompatActivity() {
             .replace(R.id.content_frame, FragmentSettings()).commit()
 
         setSupportActionBar(findViewById(R.id.main_toolbar))
+        supportActionBar?.title = getString(R.string.launcher_title)
+        supportActionBar?.subtitle = getString(R.string.launcher_subtitle)
 
         val fab = findViewById<FloatingActionButton>(R.id.fab)
         fab.setOnClickListener { checkStartGame() }
@@ -121,6 +123,13 @@ class MainActivity : AppCompatActivity() {
         // create current mods dir in case someone deleted it
         val modsDir = PreferenceManager.getDefaultSharedPreferences(this).getString("mods_dir", "")!!
         if (modsDir != "" ) File(modsDir).mkdirs()
+
+        val currentCommandLine = prefs.getString("commandLine", "") ?: ""
+        if (currentCommandLine.isBlank() ||
+            currentCommandLine == "--connect 89.223.65.44:33365" ||
+            currentCommandLine == "--connect 47.222.179.199:25563") {
+            prefs.edit().putString("commandLine", getString(R.string.pref_server_select_default)).apply()
+        }
     }
 
     @SuppressLint("ApplySharedPref")

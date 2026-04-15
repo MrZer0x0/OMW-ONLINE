@@ -45,6 +45,7 @@ class ModsActivity : AppCompatActivity() {
 
         // Enable the "back" icon in the action bar
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        supportActionBar?.title = getString(R.string.launcher_title)
 
         updateToolbarSubtitle(0)
 
@@ -102,12 +103,12 @@ class ModsActivity : AppCompatActivity() {
     }
 
     private fun updateToolbarSubtitle(tabPosition: Int) {
-        val subtitle = when (tabPosition) {
+        val tabName = when (tabPosition) {
             0 -> getString(R.string.tab_plugins)
             1 -> getString(R.string.tab_resources)
             else -> getString(R.string.tab_groundcover)
         }
-        supportActionBar?.subtitle = subtitle
+        supportActionBar?.subtitle = getString(R.string.mods_subtitle) + " • " + tabName
     }
 
     /**

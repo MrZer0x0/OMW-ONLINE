@@ -37,7 +37,22 @@ class ModsCollection(private val type: ModType,
 
     companion object {
         private val PRIORITY_BSA = listOf("Morrowind.bsa", "Tribunal.bsa", "Bloodmoon.bsa")
-        private val PRIORITY_ESM = listOf("Morrowind.esm", "Tribunal.esm", "Bloodmoon.esm")
+        private val AUTO_ENABLED_PLUGINS = listOf(
+            "Morrowind.esm",
+            "Tribunal.esm",
+            "Bloodmoon.esm",
+            "GFM.esm",
+            "Rebirth_Main.esm",
+            "OAAB_Data.esm",
+            "Tamriel_Data.esm",
+            "TR_Mainland.esm",
+            "Cyr_Main.esm",
+            "Sky_Main.esm",
+            "Wares-base.esm",
+            "NOD_Core.esm",
+            "TDoO_Main.esm",
+            "Nirn_Core.esp"
+        )
         private val GROUNDCOVER_KEYWORDS = listOf("grass", "groundcover")
     }
 
@@ -63,7 +78,7 @@ class ModsCollection(private val type: ModType,
 
     private fun initDb() {
         when (type) {
-            ModType.Plugin -> initDbMods(PRIORITY_ESM, ModType.Plugin)
+            ModType.Plugin -> initDbMods(AUTO_ENABLED_PLUGINS, ModType.Plugin)
             ModType.Resource -> {
                 initDbMods(PRIORITY_BSA, ModType.Resource)
                 initDbAllBsaFromDisk()
@@ -179,7 +194,7 @@ class ModsCollection(private val type: ModType,
                 maxOrder += 1
                 val enabledByDefault = when (type) {
                     ModType.Resource -> mod.filename in PRIORITY_BSA
-                    ModType.Plugin -> mod.filename in PRIORITY_ESM
+                    ModType.Plugin -> mod.filename in AUTO_ENABLED_PLUGINS
                     ModType.Groundcover -> GROUNDCOVER_KEYWORDS.any { mod.filename.toLowerCase(Locale.ROOT).contains(it) }
                 }
                 val newMod = Mod(type, mod.filename, mod.sourcePath, mod.fullPath, maxOrder, enabledByDefault)
